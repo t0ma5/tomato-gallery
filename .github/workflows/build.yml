@@ -162,58 +162,62 @@ jobs:
 
             ## New in 1.0
 
-            1. **App id tomato.gallery** — New application id. Launcher name stays Gallery. About name stays Tomato Gallery.
-            2. **Copy text** — The photo viewer reads printed text and numbers with on-device PaddleOCR and copies them. Nothing is uploaded. A second run on the same photo stays in the viewer.
-            3. **About** — History is one short fork sentence. Website opens https://github.com/t0ma5/tomato-gallery. The version line shows 1.0 plus the current month and year, and opens GitHub Releases.
+            ### App
 
-            ## From 6.31.1
+            1. **App id tomato.gallery** — New application id. Launcher name stays Gallery.
+
+            ### Copy text
+
+            1. **Copy text** — The photo viewer reads printed text and numbers with on-device [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5, via the [ncnnandroidppocr](https://github.com/equationl/paddleocr4android) library, and copies them. Nothing is uploaded. This adds ~20MB extra to the apk file but it's a handy feature I wanted to have.
+
+            ### Editor
 
             1. **Lossless JPEG rotate** — Viewer Rotate → Save as and editor rotate-only rewrite DCT coefficients (mozjpeg jpegtran) instead of decoding and re-encoding. File size stays about the same.
             2. **Save-as EXIF crash** — The temp JPEG is closed before EXIF is written, so saveAttributes() no longer throws on a truncated stream.
             3. **Editor rotate-only** — The initial image load no longer blocks the lossless path. Rotate without crop, filters, or flips uses the same lossless save as the viewer.
             4. **Size-capped re-encode** — If lossless rotate cannot run, JPEG saves match the source quality and stay near the original file size instead of inflating at quality 90/100.
-            5. **Inherited viewer bug** — Fix for a bug inherited from the original code and still present in Fossify Gallery (FossifyOrg/Gallery#1157).
+            5. **Editor undo** — Undo last tool keeps up to 3 snapshots.
+            6. **Editor** — Font picker for text. Larger adjust slider labels. Toolbar sits below the status bar. Tap 4:3 or 16:9 again to switch to 3:4 or 9:16. Unchecking folder tree view restores the previous grid or list. Draw/text composite onto the full-res bitmap. Text and stickers rotate a full 360°. Double-tap text to edit it. Size slider max is 25% larger. Adjust uses a color-matrix preview. Image rotation keeps unsaved work; Back asks to discard.
 
-            ## From 6.31
+            ### Photos
 
-            1. **Clean thumbnails** — The favorite star overlay is off by default. Turn it back on in Settings → Thumbnails → File thumbnail style → Mark favorite items.
-            2. **Darker dark theme** — Dark and Dark red backgrounds are `#111111` instead of `#2D2D2D`. Existing installs are moved over automatically.
-            3. **Save fixes** — Saving over the original on Android 11+ no longer stalls on an invalid MediaStore uri when the file is not indexed yet. List view thumbnails follow the Rounded corners / Square setting like the grid.
-            4. **Scroll-back** — Closing the viewer returns the folder grid to the photo you were on.
-            5. **Favorites** — Tap the star on a thumbnail or in the viewer; it updates without a reload. Overflow: Show favorites only. Folders stay filled after starring. Properties works on Favorites and Recycle Bin.
-            6. **EXIF orientation** — Viewer and pinch-zoom tiles honour the embedded orientation tag.
-            7. **Editor undo** — Undo last tool keeps up to 3 snapshots.
-            8. **Formats** — WebP pinch-zoom. Animated JPEG XL plays in the viewer.
-            9. **Android Trash / favorites** — Optional MediaStore trash on Android 11+ instead of the app Recycle Bin. Favorites also write `IS_FAVORITE` when the system allows it.
-            10. **Video trim** — Cut a clip to a start/end range and save it next to the original. The toolbar sits below the status bar.
-            11. **Save frame** — Grab the current video frame as a JPEG from the viewer or in-app player.
-            12. **Tags** — Add or remove tags from the grid or viewer (tap × on a chip). Commas make separate tags. Search matches tag names.
-            13. **Duplicates** — Scan a folder (or all) and delete extra copies. The overflow item sits above Settings.
-            14. **Collages** — CAB on 2–4 photos: side by side, stacked, or 2×2.
-            15. **Status-bar padding** — Trim video and 360° panorama toolbars no longer draw under the phone status bar.
+            1. **JPEG optimize** — [jpegoptim](https://github.com/tjko/jpegoptim): lossless Huffman or lossy max quality (default 85). Atomic write-back, SAF restore on failure, skip Ultra HDR/container JPEGs. EXIF/XMP/ICC/IPTC kept.
+            2. **Save fixes** — Saving over the original on Android 11+ no longer stalls on an invalid MediaStore uri when the file is not indexed yet. List view thumbnails follow the Rounded corners / Square setting like the grid.
+            3. **EXIF orientation** — Viewer and pinch-zoom tiles honour the embedded orientation tag.
+            4. **Formats** — WebP pinch-zoom. Animated JPEG XL plays in the viewer.
+            5. **Scroll-back** — Closing the viewer returns the folder grid to the photo you were on.
+            6. **Metadata** — Remove GPS or all EXIF metadata from photos.
+            7. **Inherited viewer bug** — Fix for a bug inherited from the original code and still present in [Fossify Gallery](https://github.com/FossifyOrg/Gallery/issues/1157).
+            8. **Darker dark theme** — Dark and Dark red backgrounds are `#111111` instead of `#2D2D2D`. Existing installs are moved over automatically.
 
-            ## From 6.30
+            ### Video and panorama
+
+            1. **Video trim** — Cut a clip to a start/end range and save it next to the original. The toolbar sits below the status bar.
+            2. **Save frame** — Grab the current video frame as a JPEG from the viewer or in-app player.
+            3. **Motion photos** — Play Google / Samsung motion photos in the viewer and save the embedded clip as an MP4. Container:Item XMP is parsed per element. Extracted MP4s are deleted after playback.
+            4. **360° panoramas** — Open panoramas and photospheres in an OpenGL viewer (touch, pinch, gyroscope).
+            5. **Status-bar padding** — Trim video and 360° panorama toolbars no longer draw under the phone status bar.
+
+            ### Organize
+
+            1. **Favorites** — Tap the star on a thumbnail or in the viewer; it updates without a reload. Overflow: Show favorites only. Folders stay filled after starring. Properties works on Favorites and Recycle Bin.
+            2. **Tags** — Add or remove tags from the grid or viewer (tap × on a chip). Commas make separate tags. Search matches tag names.
+            3. **Duplicates** — Scan a folder (or all) and delete extra copies. The overflow item sits above Settings.
+            4. **Collages** — CAB on 2–4 photos: side by side, stacked, or 2×2.
+            5. **Stacks** — Stack RAW+JPEG pairs, bursts, and edited copies in the grid. Optional. Sharing can strip GPS/EXIF.
+            6. **Folders menu** — Show hidden and Show excluded are persistent overflow toggles. Tree view is a third option in Change view type: Grid, List, Tree.
+
+            ### Privacy
 
             1. **Lock and intents** — Untrusted viewer launches ignore skip-authentication and hidden-path extras. App lock uses a 5-minute grace. Settings import skips PIN-protected keys.
             2. **Recycle Bin / backup** — Bin lives in `files/recycle_bin`. Android backup of the bin, database, and PIN hashes is off.
-            3. **JPEG optimize** — Atomic write-back, SAF restore on failure, skip Ultra HDR/container JPEGs. EXIF/XMP/ICC/IPTC kept.
-            4. **Editor** — Draw/text composite onto the full-res bitmap. Text and stickers rotate a full 360°. Double-tap text to edit it. Size slider max is 25% larger. Adjust uses a color-matrix preview. Image rotation keeps unsaved work; Back asks to discard.
-            5. **Motion photos** — Container:Item XMP is parsed per element. Extracted MP4s are deleted after playback.
-            6. **16 KB / size** — Native libs target 16 KB pages. GitHub ships arm64-v8a, armeabi-v7a, x86_64, and universal FOSS APKs.
-            7. **Stacks / share** — Optional stacking of RAW+JPEG, bursts, and edited copies. Optional strip of GPS/EXIF when sharing.
-            8. **Other** — Locked Favorites/Bin/widget thumbnails; hide/unhide race fix; seeking keeps pause; okio CVE bump; unit tests; translations for new strings.
-            9. **Android 16** — compileSdk/targetSdk 36. Media3 1.10.1, JPEG XL decoder 2.6.1.
-            10. **About / defaults** — Version line opens GitHub Releases. New installs: dark red theme (not Material You), `dd/MM/yyyy`, 24-hour clock, 1:1 zoom on, system video player. Color pickers default to red.
-            11. **Folders menu** — Show hidden and Show excluded are persistent overflow toggles. Tree view is a third option in Change view type: Grid, List, Tree.
+            3. **Android Trash / favorites** — Optional MediaStore trash on Android 11+ instead of the app Recycle Bin. Favorites also write `IS_FAVORITE` when the system allows it.
 
-            ## From 6.29
+            ### Platform
 
-            1. **JPEG optimize** — jpegoptim: lossless Huffman or lossy max quality (default 85).
-            2. **Motion photos** — Play Google / Samsung motion photos in the viewer and save the embedded clip as an MP4.
-            3. **360° panoramas** — Open panoramas and photospheres in an OpenGL viewer (touch, pinch, gyroscope).
-            4. **Stacks** — Stack RAW+JPEG pairs, bursts, and edited copies in the grid.
-            5. **Metadata** — Remove GPS or all EXIF metadata from photos.
-            6. **Editor** — Font picker for text. Larger adjust slider labels. Toolbar sits below the status bar. Tap 4:3 or 16:9 again to switch to 3:4 or 9:16. Unchecking folder tree view restores the previous grid or list.
+            1. **16 KB / size** — Native libs target 16 KB pages. GitHub ships arm64-v8a, armeabi-v7a, x86_64, and universal FOSS APKs.
+            2. **Android 16** — compileSdk/targetSdk 36. Media3 1.10.1, JPEG XL decoder 2.6.1.
+            3. **Other** — Locked Favorites/Bin/widget thumbnails; hide/unhide race fix; seeking keeps pause; okio CVE bump; unit tests; translations for new strings.
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
