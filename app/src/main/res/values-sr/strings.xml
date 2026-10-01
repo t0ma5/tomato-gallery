@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Једноставна галерија</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Галерија</string>
     <string name="edit">Уредити</string>
     <string name="open_camera">Отвори камеру</string>

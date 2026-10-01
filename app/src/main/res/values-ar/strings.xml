@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">الاستديو البسيط</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">الاستديو</string>
     <string name="edit">تعديل</string>
     <string name="open_camera">فتح الكاميرا</string>

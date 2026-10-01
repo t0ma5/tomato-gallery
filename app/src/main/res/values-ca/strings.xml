@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Simple Gallery</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galeria</string>
     <string name="edit">Edita</string>
     <string name="open_camera">Obre la càmera</string>
@@ -46,9 +46,9 @@
     <string name="change_filters_underlined"><u>Canvia els filtres</u></string>
     <!-- Hide / Exclude -->
     <string name="hide_folder_description">Aquesta funció oculta la carpeta agregant un fitxer «.nomedia» a dins d\'ella. També ocultarà les subcarpetes. Podeu veure-les canviant l\'opció «Mostra els elements ocults» a la configuració. Continuo\?</string>
-    <string name="exclude_folder_description">Això exclourà la selecció junt amb les seves subcarpetes, només a la Simple Gallery. Podeu gestionar les carpetes excloses a la configuració.</string>
+    <string name="exclude_folder_description">Això exclourà la selecció junt amb les seves subcarpetes, només a la Tomato Gallery. Podeu gestionar les carpetes excloses a la configuració.</string>
     <string name="exclude_folder_parent">Voleu excloure la carpeta superior\?</string>
-    <string name="excluded_activity_placeholder">Excloure les carpetes les ocultarà junt amb les seves subcarpetes, però només a la Simple Gallery. Seguiran sent visibles en altres aplicacions.
+    <string name="excluded_activity_placeholder">Excloure les carpetes les ocultarà junt amb les seves subcarpetes, però només a la Tomato Gallery. Seguiran sent visibles en altres aplicacions.
 \n
 \nSi voleu ocultar-les d\'altres aplicacions, feu servir la funció Oculta.</string>
     <string name="hidden_folders">Carpetes ocultes</string>
@@ -346,8 +346,8 @@
     <string name="pesdk_common_title_pipettableColor">Color que es pot triar amb una pipeta</string>
     <string name="vesdk_video_trim_title_name">Retalla</string>
     <!-- FAQ -->
-    <string name="faq_1_title">Com puc fer que Simple Gallery sigui la galeria predeterminada del dispositiu\?</string>
-    <string name="faq_1_text">Primer heu de trobar la galeria actualment predeterminada a la secció Aplicacions de la configuració del dispositiu, cerqueu un botó que digui alguna cosa semblant a «Obre per defecte», feu-hi clic i seleccioneu «Neteja els valors predeterminats». La pròxima vegada que proveu d\'obrir una imatge o un vídeo, haureu de veure un selector d\'aplicació, on podeu seleccionar Simple Gallery i convertir-la en l\'aplicació predeterminada.</string>
+    <string name="faq_1_title">Com puc fer que Tomato Gallery sigui la galeria predeterminada del dispositiu\?</string>
+    <string name="faq_1_text">Primer heu de trobar la galeria actualment predeterminada a la secció Aplicacions de la configuració del dispositiu, cerqueu un botó que digui alguna cosa semblant a «Obre per defecte», feu-hi clic i seleccioneu «Neteja els valors predeterminats». La pròxima vegada que proveu d\'obrir una imatge o un vídeo, haureu de veure un selector d\'aplicació, on podeu seleccionar Tomato Gallery i convertir-la en l\'aplicació predeterminada.</string>
     <string name="faq_2_title">Vaig bloquejar l\'aplicació amb una contrasenya, però l\'he oblidat. Què puc fer\?</string>
     <string name="faq_2_text">Es pot resoldre de dues maneres. Podeu tornar a instal·lar l\'aplicació o trobar l\'aplicació a la configuració del dispositiu i seleccionar «Neteja les dades». Això reiniciarà totes les configuracions, no eliminarà cap fitxer multimèdia.</string>
     <string name="faq_3_title">Com puc fer que un àlbum sempre aparegui a la part superior\?</string>
@@ -355,7 +355,7 @@
     <string name="faq_4_title">Com puc avançar ràpidament els vídeos\?</string>
     <string name="faq_4_text">Podeu fer-ho tocant dues vegades la vora de la pantalla, o tocant els textos de durada actual o màxima a prop de la barra de cerca. Si activeu l\'obertura de vídeos en una pantalla separada a la configuració de l\'aplicació, també podreu fer servir gestos horitzontals.</string>
     <string name="faq_5_title">Quina és la diferència entre ocultar i excloure una carpeta\?</string>
-    <string name="faq_5_text">Excloure impedeix mostrar la carpeta només a Simple Gallery, mentre que ocultar també amaga la carpeta a altres galeries. Funciona creant un fitxer «.nomedia» buit a la carpeta indicada, que podeu eliminar amb qualsevol gestor de fitxers. Tingueu en compte que alguns dispositius no permeten amagar carpetes com Càmera, Captures de pantalla o Descàrregues.</string>
+    <string name="faq_5_text">Excloure impedeix mostrar la carpeta només a Tomato Gallery, mentre que ocultar també amaga la carpeta a altres galeries. Funciona creant un fitxer «.nomedia» buit a la carpeta indicada, que podeu eliminar amb qualsevol gestor de fitxers. Tingueu en compte que alguns dispositius no permeten amagar carpetes com Càmera, Captures de pantalla o Descàrregues.</string>
     <string name="faq_6_title">Per què apareixen les carpetes amb les portades de la música o adhesius\?</string>
     <string name="faq_6_text">Pot passar que veureu que apareixen alguns àlbums inusuals. Podeu excloure\'ls fàcilment prement-los prolongadament i seleccionant Excloure. Al diàleg següent, podeu seleccionar la carpeta principal, és probable que impedeixi que també apareguin altres àlbums relacionats.</string>
     <string name="faq_7_title">No apareix una carpeta amb imatges, o no mostra tots els elements. Què puc fer\?</string>

@@ -219,7 +219,11 @@ def main() -> None:
         [
             (
                 'launchViewIntent("https://github.com/SimpleMobileTools")',
-                'launchViewIntent("https://github.com/t0ma5/Simple-Gallery")',
+                'launchViewIntent("https://github.com/t0ma5/tomato-gallery")',
+            ),
+            (
+                'launchViewIntent("https://simplemobiletools.com/")',
+                'launchViewIntent("https://github.com/t0ma5/tomato-gallery")',
             ),
             (
                 """    private fun onVersionClick() {
@@ -240,7 +244,7 @@ def main() -> None:
     }
 """,
                 """    private fun onVersionClick() {
-        launchViewIntent("https://github.com/t0ma5/Simple-Gallery/releases")
+        launchViewIntent("https://github.com/t0ma5/tomato-gallery/releases")
     }
 """,
             ),
@@ -461,7 +465,7 @@ def main() -> None:
         [
             (
                 "const val LICENSE_ZIP4J = 8589934592L\n",
-                "const val LICENSE_ZIP4J = 8589934592L\nconst val LICENSE_JPEGOPTIM = 17179869184L\n",
+                "const val LICENSE_ZIP4J = 8589934592L\nconst val LICENSE_JPEGOPTIM = 17179869184L\nconst val LICENSE_PADDLEOCR = 34359738368L\n",
             ),
         ],
     )
@@ -471,7 +475,8 @@ def main() -> None:
             (
                 "        License(LICENSE_ZIP4J, R.string.zip4j_title, R.string.zip4j_text, R.string.zip4j_url)\n",
                 "        License(LICENSE_ZIP4J, R.string.zip4j_title, R.string.zip4j_text, R.string.zip4j_url),\n"
-                "        License(LICENSE_JPEGOPTIM, R.string.jpegoptim_title, R.string.jpegoptim_text, R.string.jpegoptim_url),\n",
+                "        License(LICENSE_JPEGOPTIM, R.string.jpegoptim_title, R.string.jpegoptim_text, R.string.jpegoptim_url),\n"
+                "        License(LICENSE_PADDLEOCR, R.string.paddleocr_title, R.string.paddleocr_text, R.string.paddleocr_url),\n",
             ),
         ],
     )
@@ -481,13 +486,14 @@ def main() -> None:
             (
                 '    <string name="zip4j_title">Zip4j (ZIP compression and decompression)</string>\n',
                 '    <string name="zip4j_title">Zip4j (ZIP compression and decompression)</string>\n'
-                '    <string name="jpegoptim_title">jpegoptim (lossless JPEG optimization)</string>\n',
+                '    <string name="jpegoptim_title">jpegoptim (lossless JPEG optimization)</string>\n'
+                '    <string name="paddleocr_title">PaddleOCR (on-device text recognition)</string>\n',
             ),
             (
                 '    <string name="disclaimer">Disclaimer</string>\n',
                 '    <string name="disclaimer">Disclaimer</string>\n'
                 '    <string name="history">History</string>\n'
-                '    <string name="about_history_text">Simple-Gallery (GPL-3.0) was my favorite FOSS gallery app until the project was sold to a shady Israeli company named ZipoApps in 2023. I forked it to keep it alive, FOSS and updated. I will release new versions as long as I have time and energy. Code contributions on GitHub are very welcome :)</string>\n',
+                '    <string name="about_history_text">Tomato Gallery is a fork of Simple-Gallery (GPL-3.0) with new features and improvements. I will release new versions as long as I have time and energy.</string>\n',
             ),
         ],
     )
@@ -644,7 +650,9 @@ def main() -> None:
                 '    <string name="zip4j_url">https://github.com/srikanth-lingala/zip4j</string>\n',
                 '    <string name="zip4j_url">https://github.com/srikanth-lingala/zip4j</string>\n'
                 '    <string name="jpegoptim_text">jpegoptim 1.5.6 by Timo Kokkonen, linked with MozJPEG.\\n\\nCopyright (C) 1996-2025 Timo Kokkonen\\n\\nThis is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\\n\\nThis software is based in part on the work of the Independent JPEG Group and MozJPEG (libjpeg-turbo).</string>\n'
-                '    <string name="jpegoptim_url">https://github.com/tjko/jpegoptim</string>\n',
+                '    <string name="jpegoptim_url">https://github.com/tjko/jpegoptim</string>\n'
+                '    <string name="paddleocr_text">PP-OCRv5 mobile models for reading printed text and numbers on a photo. Inference runs on-device through the ncnn Android port. Nothing is uploaded.\\n\\nPaddleOCR is licensed under the Apache License, Version 2.0. ncnn is licensed under the BSD 3-Clause License.</string>\n'
+                '    <string name="paddleocr_url">https://github.com/PaddlePaddle/PaddleOCR</string>\n',
             ),
         ],
     )

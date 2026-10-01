@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Galerie simple</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galerie</string>
     <string name="edit">Modifier</string>
     <string name="open_camera">Ouvrir l\'appareil photo</string>
@@ -445,7 +445,7 @@
     <string name="strip_metadata_on_share">Retirer GPS et EXIF lors du partage</string>
     <string name="discard_unsaved_edits">Abandonner les modifications non enregistrées ?</string>
     <string name="history">Historique</string>
-    <string name="about_history_text">Simple-Gallery (GPL-3.0) était mon appli galerie FOSS préférée jusqu’à la vente du projet en 2023 à une société israélienne douteuse nommée ZipoApps. Je l’ai dérivée pour la garder vivante, libre et à jour. Je publierai de nouvelles versions tant que j’aurai le temps et l’énergie. Les contributions au code sur GitHub sont les bienvenues :)</string>
+    <string name="about_history_text">Tomato Gallery est un dérivé de Simple-Gallery (GPL-3.0) avec de nouvelles fonctions et des améliorations. Je publierai de nouvelles versions tant que j’aurai le temps et l’énergie.</string>
     <string name="show_hidden">Afficher les masqués</string>
     <string name="show_excluded">Afficher les exclus</string>
     <string name="show_favorites_only">Afficher uniquement les favoris</string>

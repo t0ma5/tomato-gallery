@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Simple Gallery</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Thư viện</string>
     <string name="edit">Chỉnh sửa</string>
     <string name="open_camera">Mở Camera</string>
@@ -46,9 +46,9 @@
     <string name="change_filters_underlined"><u>Thay đổi bộ lọc</u></string>
     <!-- Hide / Exclude -->
     <string name="hide_folder_description">Chức năng này ẩn thư mục bằng cách thêm tệp \'.nomedia\' vào nó, nó cũng sẽ ẩn tất cả các thư mục con. Bạn có thể nhìn thấy chúng bằng cách bật tùy chọn \'Hiển thị các mục bị ẩn\' trong Cài đặt. Tiếp tục\?</string>
-    <string name="exclude_folder_description">Điều này sẽ loại trừ lựa chọn cùng với các thư mục con của nó khỏi Simple Gallery. Bạn có thể quản lý các thư mục loại trừ trong Cài đặt.</string>
+    <string name="exclude_folder_description">Điều này sẽ loại trừ lựa chọn cùng với các thư mục con của nó khỏi Tomato Gallery. Bạn có thể quản lý các thư mục loại trừ trong Cài đặt.</string>
     <string name="exclude_folder_parent">Loại trừ thư mục mẹ thay thế\?</string>
-    <string name="excluded_activity_placeholder">Các thư mục loại trừ sẽ làm cho chúng cùng với các thư mục con của chúng bị ẩn chỉ trong Simple Gallery, chúng vẫn sẽ hiển thị trong các ứng dụng khác.
+    <string name="excluded_activity_placeholder">Các thư mục loại trừ sẽ làm cho chúng cùng với các thư mục con của chúng bị ẩn chỉ trong Tomato Gallery, chúng vẫn sẽ hiển thị trong các ứng dụng khác.
 \n
 \nNếu bạn cũng muốn ẩn chúng khỏi các ứng dụng khác, hãy sử dụng chức năng Ẩn.</string>
     <string name="hidden_folders">Các thư mục ẩn</string>
@@ -346,8 +346,8 @@
     <string name="pesdk_common_title_pipettableColor">Màu sắc dễ thương</string>
     <string name="vesdk_video_trim_title_name">Trim</string>
     <!-- FAQ -->
-    <string name="faq_1_title">Làm thế nào để đặt Simple Gallery thành thư viện mặc định\?</string>
-    <string name="faq_1_text">Trước tiên, bạn phải tìm thư viện hiện tại mặc định trong phần Ứng dụng trong Cài đặt thiết bị của bạn, tìm nút có nội dung như \"Mở theo mặc định\", nhấp vào đó, sau đó chọn \"Xóa mặc định\".          Lần tới, bạn hãy thử mở một hình ảnh hoặc video, bạn sẽ thấy một bộ chọn ứng dụng, nơi bạn có thể chọn Simple Gallery và biến nó thành ứng dụng mặc định.</string>
+    <string name="faq_1_title">Làm thế nào để đặt Tomato Gallery thành thư viện mặc định\?</string>
+    <string name="faq_1_text">Trước tiên, bạn phải tìm thư viện hiện tại mặc định trong phần Ứng dụng trong Cài đặt thiết bị của bạn, tìm nút có nội dung như \"Mở theo mặc định\", nhấp vào đó, sau đó chọn \"Xóa mặc định\".          Lần tới, bạn hãy thử mở một hình ảnh hoặc video, bạn sẽ thấy một bộ chọn ứng dụng, nơi bạn có thể chọn Tomato Gallery và biến nó thành ứng dụng mặc định.</string>
     <string name="faq_2_title">Tôi đã khóa ứng dụng bằng mật khẩu, nhưng tôi quên mất. Tôi có thể làm gì\?</string>
     <string name="faq_2_text">Bạn có thể giải quyết nó theo 2 cách. Bạn có thể cài đặt lại ứng dụng hoặc tìm ứng dụng trong cài đặt thiết bị của mình và chọn \"Xóa dữ liệu\". Nó sẽ thiết lập lại tất cả các cài đặt của bạn, nó sẽ không xóa bất kỳ tập tin phương tiện nào.</string>
     <string name="faq_3_title">Làm thế nào tôi có thể làm cho một album luôn xuất hiện ở đầu\?</string>

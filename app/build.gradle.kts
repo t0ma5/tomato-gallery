@@ -144,7 +144,7 @@ tasks.configureEach {
             listOf("arm64-v8a", "armeabi-v7a", "x86_64", "universal")
         }
         abis.forEach { abi ->
-            val dest = dir.resolve("Simple-Gallery_${version}-FOSS-${abi}.apk")
+            val dest = dir.resolve("Tomato-Gallery_${version}-FOSS-${abi}.apk")
             val src = dir.listFiles()
                 ?.filter { it.isFile && it.extension == "apk" && it.name.contains(abi) }
                 ?.minByOrNull { if (it.name == dest.name) 0 else 1 }
@@ -187,6 +187,7 @@ dependencies {
         exclude(group = "com.github.bumptech.glide")
     }
     implementation(libs.okio)
+    implementation(libs.ncnn.ppocr)
     implementation(libs.picasso) {
         exclude(group = "com.squareup.okhttp3", module = "okhttp")
     }

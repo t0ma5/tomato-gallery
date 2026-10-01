@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Yksinkertainen galleria</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galleria</string>
     <string name="edit">Muokkaa</string>
     <string name="open_camera">Avaa kamera</string>
@@ -46,9 +46,9 @@
     <string name="change_filters_underlined"><u>Muuta suotimia</u></string>
     <!-- Hide / Exclude -->
     <string name="hide_folder_description">Tämä piilottaa kansion ja alikansiot lisäämällä \'.nomedia\' tiedoston kansioon. Näet ne valitsemalla \'Näytä piilotetut kansiot\' asetuksissa. Jatketaanko\?</string>
-    <string name="exclude_folder_description">Tämä poissulkee valitun ja alikansiot vain Simple Gallerysta. Voit hallinnoida poissuljettuja kansioita asetuksista.</string>
+    <string name="exclude_folder_description">Tämä poissulkee valitun ja alikansiot vain Tomato Gallerysta. Voit hallinnoida poissuljettuja kansioita asetuksista.</string>
     <string name="exclude_folder_parent">Poissulje yläkansio tämän sijaan\?</string>
-    <string name="excluded_activity_placeholder">Kansion poissulkeminen piilottaa kansion alikansioineen vain Simple Galleryssa, ne jäävät näkyviin muihin sovelluksiin.
+    <string name="excluded_activity_placeholder">Kansion poissulkeminen piilottaa kansion alikansioineen vain Tomato Galleryssa, ne jäävät näkyviin muihin sovelluksiin.
 \n
 \nJos haluat piilottaa kansion myös muissa sovelluksissa, käytä piilota-toimintoa.</string>
     <string name="hidden_folders">Piilotetut kansiot</string>
@@ -346,7 +346,7 @@
     <string name="pesdk_common_title_pipettableColor">Poimi väri</string>
     <string name="vesdk_video_trim_title_name">Leikkaa</string>
     <!-- FAQ -->
-    <string name="faq_1_title">Miten voin tehdä Simple Gallerystä oletusgalleriasovelluksen\?</string>
+    <string name="faq_1_title">Miten voin tehdä Tomato Gallerystä oletusgalleriasovelluksen\?</string>
     <string name="faq_1_text">Etsi ensin laitteen asetuksista oletusgalleriasovellus, valitse sen asetuksista \"Avaa oletuksena\" ja valitse \"Poista oletukset\". Seuraavalla kerralla kun avaat kuvan tai videon, pyydetään valitsemaan uusi oletussovellus.</string>
     <string name="faq_2_title">Lukitsin sovelluksen salasanalla, jonka unohdin. Mitä voin tehdä\?</string>
     <string name="faq_2_text">Tähän on kaksi ratkaisua. Voit joko asentaa sovelluksen uudelleen tai etsiä sovelluksen laitteen asetuksista ja tyhjentää sovelluksen tiedot. Sovelluksen asetukset nollautuvat, mutta mediatiedostoja ei poisteta.</string>
@@ -355,7 +355,7 @@
     <string name="faq_4_title">Kuinka voin kelata videota nopeasti eteenpäin\?</string>
     <string name="faq_4_text">Tuplaklikkaa haluamaasi puolta ruudusta. Voit myös napauttaa hakupalkin vierestä kestoa kuvaavaa tekstiä. Jos käytössä on videoiden avaus erillisellä ruudulla, voit käyttää vaakatasoeleitä.</string>
     <string name="faq_5_title">Mitä eroa on kansion piilotuksella ja poissululla\?</string>
-    <string name="faq_5_text">Poissulku piilottaa kansion vain Simple Galleryssä, piilotus taas piilottaa järjestelmänlaajuisesti muistakin galleriasovelluksista. Piilotustoiminto luo kansioon tyhjän \".nomedia\"-tiedoston jonka voi tarvittaessa poistaa millä tahansa tiedostonhallintasovelluksella. Huomioi, että jotkin laitteet eivät salli joidenkin kansioden, kuten Camera, Screenshots ja Downloads, piilotusta.</string>
+    <string name="faq_5_text">Poissulku piilottaa kansion vain Tomato Galleryssä, piilotus taas piilottaa järjestelmänlaajuisesti muistakin galleriasovelluksista. Piilotustoiminto luo kansioon tyhjän \".nomedia\"-tiedoston jonka voi tarvittaessa poistaa millä tahansa tiedostonhallintasovelluksella. Huomioi, että jotkin laitteet eivät salli joidenkin kansioden, kuten Camera, Screenshots ja Downloads, piilotusta.</string>
     <string name="faq_6_title">Miksi galleriassa näkyy kansioita musiikkialbumien kansitaiteella tai tarroilla\?</string>
     <string name="faq_6_text">Voi olla, että joitain epätavallisia albumeita näytetään. Voit poissulkea ne helposti painamalla pitkään albumia ja valitsemalla Poissulje. Avautuvassa valikossa voit valita yläkansion, jonka poissulku mahdollisesti estää myös muiden epätoivottujen albumien näkymisen.</string>
     <string name="faq_7_title">Kuvan sisältävä kansio ei näy tai siinä ei näy kaikkia kuvia. Mitä voin tehdä\?</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Simple Gallery</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galleri</string>
     <string name="edit">Redigér</string>
     <string name="open_camera">Åbn kamera</string>
@@ -46,9 +46,9 @@
     <string name="change_filters_underlined"><u>Skift filter</u></string>
     <!-- Hide / Exclude -->
     <string name="hide_folder_description">Denne funktion skjuler mappen og dens eventuelle undermapper ved at oprette en \".nomedia\"-fil i den. Du kan se dem ved at klikke på \"Vis skjulte\" i indstillingerne. Fortsæt\?</string>
-    <string name="exclude_folder_description">Dette vil kun ekskludere de valgte mapper (og deres undermapper) fra Simple Gallery. Du kan administrere ekskluderede mapper i indstillingerne.</string>
+    <string name="exclude_folder_description">Dette vil kun ekskludere de valgte mapper (og deres undermapper) fra Tomato Gallery. Du kan administrere ekskluderede mapper i indstillingerne.</string>
     <string name="exclude_folder_parent">Ekskluder en overliggende mappe i stedet\?</string>
-    <string name="excluded_activity_placeholder">Ekskludering af mapper vil skjule dem og eventuelle undermapper for Simple Gallery, de vil stadig være synlige for andre apps.
+    <string name="excluded_activity_placeholder">Ekskludering af mapper vil skjule dem og eventuelle undermapper for Tomato Gallery, de vil stadig være synlige for andre apps.
 \n
 \nHvis du også vil skjule dem for andre apps, skal du bruge funktionen Skjul.</string>
     <string name="hidden_folders">Skjulte mapper</string>
@@ -346,8 +346,8 @@
     <string name="pesdk_common_title_pipettableColor">Pipetterbar farve</string>
     <string name="vesdk_video_trim_title_name">Trim</string>
     <!-- FAQ -->
-    <string name="faq_1_title">Hvordan kan jeg gøre Simple Gallery til min enheds standardgalleri\?</string>
-    <string name="faq_1_text">Først skal du finde det nuværende standardgalleri i Apps-sektionen af din enheds indstillinger. Kig efter en knap som hedder noget i stil med \"Åbn som standard\", klik på denne og vælg \"Ryd standarder\". Næste gang du forsøger at åbne et billede eller en video, bør du se en app-vælger, hvor du kan vælge Simple Gallery og gøre den til standardapp.</string>
+    <string name="faq_1_title">Hvordan kan jeg gøre Tomato Gallery til min enheds standardgalleri\?</string>
+    <string name="faq_1_text">Først skal du finde det nuværende standardgalleri i Apps-sektionen af din enheds indstillinger. Kig efter en knap som hedder noget i stil med \"Åbn som standard\", klik på denne og vælg \"Ryd standarder\". Næste gang du forsøger at åbne et billede eller en video, bør du se en app-vælger, hvor du kan vælge Tomato Gallery og gøre den til standardapp.</string>
     <string name="faq_2_title">Jeg har låst appen med en adgangskode, men jeg har glemt den. Hvad kan jeg gøre\?</string>
     <string name="faq_2_text">Du har to muligheder. Du kan enten geninstallere appen, eller finde den i indstillingerne på din enhed og vælge \"Ryd data\". Dette vil nulstille alle dine indstillinger, det vil ikke slette nogen mediefiler.</string>
     <string name="faq_3_title">Hvordan kan jeg altid få et bestemt album vist i toppen\?</string>
@@ -355,7 +355,7 @@
     <string name="faq_4_title">Hvordan kan jeg spole fremad i videoer\?</string>
     <string name="faq_4_text">Du kan gøre det ved at dobbelttrykke på siden af skærmen eller ved at trykke på teksten for aktuel eller maksimal varighed nær søgelinjen. Hvis du aktiverer åbning af videoer på en separat skærm i appindstillingerne, kan du også bruge horisontale bevægelser.</string>
     <string name="faq_5_title">Hvad er forskellen på at skjule og ekskludere en mappe\?</string>
-    <string name="faq_5_text">Ekskludering forhindrer kun visning af mappen i Simple Gallery, mens Skjul virker på systemniveau og skjuler mappen fra andre gallerier også. Det fungerer ved at oprette en tom \".nomedia\"-fil i den givne mappe, som du kan slette med enhver filhåndterings-app. Bemærk, at det på nogle enheder ikke er muligt at skjule mapper som Kamera, Skærmbilleder og Downloads.</string>
+    <string name="faq_5_text">Ekskludering forhindrer kun visning af mappen i Tomato Gallery, mens Skjul virker på systemniveau og skjuler mappen fra andre gallerier også. Det fungerer ved at oprette en tom \".nomedia\"-fil i den givne mappe, som du kan slette med enhver filhåndterings-app. Bemærk, at det på nogle enheder ikke er muligt at skjule mapper som Kamera, Skærmbilleder og Downloads.</string>
     <string name="faq_6_title">Hvorfor dukker mapper med musikomslag eller klistermærker op\?</string>
     <string name="faq_6_text">Det kan ske at du vil se nogle udsædvanlige albummer. Du kan nemt ekskludere disse ved at holde fingeren nede på disse og vælge Ekskluder. I den næste dialogboks kan du vælge den ovenliggende mappe, da andre relaterede albummer så sandsynligvis også vil blive forhindret i at blive vist.</string>
     <string name="faq_7_title">En mappe med billeder dukker ikke op, eller den viser ikke alle elementer. Hvad kan jeg gøre\?</string>

@@ -116,7 +116,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleFossRelease --stacktrace --no-daemon
 
-      - name: Name APK Simple-Gallery_<version>-FOSS-<abi>
+      - name: Name APK Tomato-Gallery_<version>-FOSS-<abi>
         if: github.event_name != 'pull_request'
         id: apk
         run: |
@@ -128,7 +128,7 @@ jobs:
             local src
             src=$(find app/build/outputs/apk/foss/release -name "*${abi}*.apk" | head -n 1)
             test -n "$src"
-            cp "$src" "dist/Simple-Gallery_${VERSION}-FOSS-${abi}.apk"
+            cp "$src" "dist/Tomato-Gallery_${VERSION}-FOSS-${abi}.apk"
           }
           copy_abi arm64-v8a
           copy_abi armeabi-v7a
@@ -140,8 +140,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: Simple-Gallery_${{ steps.apk.outputs.version }}
-          path: dist/Simple-Gallery_*.apk
+          name: Tomato-Gallery_${{ steps.apk.outputs.version }}
+          path: dist/Tomato-Gallery_*.apk
           if-no-files-found: error
 
       - name: Publish GitHub Release
@@ -149,24 +149,71 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           name: ${{ steps.apk.outputs.version }}
-          files: dist/Simple-Gallery_*.apk
+          files: dist/Tomato-Gallery_*.apk
           overwrite_files: true
           generate_release_notes: true
           body: |
-            Release-signed FOSS APKs for applicationId tomato.simple.gallery.
-            `Simple-Gallery_<version>-FOSS-arm64-v8a.apk` for most phones; `...-armeabi-v7a.apk` for 32-bit ARM; `...-x86_64.apk` for 64-bit emulators; `...-FOSS-universal.apk` has all three ABIs.
-            They can sit next to Play Store Simple Gallery Pro. Launcher name is Gallery.
+            Release-signed FOSS APKs for applicationId tomato.gallery.
+            `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk` for most phones; `...-armeabi-v7a.apk` for 32-bit ARM; `...-x86_64.apk` for 64-bit emulators; `...-FOSS-universal.apk` has all three ABIs.
+            They can sit next to Play Store Simple Gallery Pro. The app name is Tomato Gallery. Launcher name is Gallery.
 
-            ## New in 6.31.2
+            Version 1.0 (versionCode 100) replaces the 6.x line. It does not update installs of tomato.simple.gallery. Those stay as a separate app until you uninstall them.
+            Notes below roll up every earlier GitHub release. The 6.31.2 note is omitted on purpose.
 
-            1. **Thumbnail stays with its file** — A recycled grid cell drops the previous file's image immediately. The delayed load runs only if that cell is still bound to the same path, so a slow video thumbnail cannot stand in for another file.
+            ## New in 1.0
 
-            ## New in 6.31.1
+            1. **App id tomato.gallery** — New application id. Launcher name stays Gallery. About name stays Tomato Gallery.
+            2. **Copy text** — The photo viewer reads printed text and numbers with on-device PaddleOCR and copies them. Nothing is uploaded. A second run on the same photo stays in the viewer.
+            3. **About** — History is one short fork sentence. Website opens https://github.com/t0ma5/tomato-gallery. The version line shows 1.0 plus the current month and year, and opens GitHub Releases.
+
+            ## From 6.31.1
 
             1. **Lossless JPEG rotate** — Viewer Rotate → Save as and editor rotate-only rewrite DCT coefficients (mozjpeg jpegtran) instead of decoding and re-encoding. File size stays about the same.
-            2. **Save-as EXIF crash** — The temp JPEG is closed before EXIF is written, so saveAttributes() no longer throws "ExifInterface only supports saving attributes for JPEG" on a truncated stream.
+            2. **Save-as EXIF crash** — The temp JPEG is closed before EXIF is written, so saveAttributes() no longer throws on a truncated stream.
             3. **Editor rotate-only** — The initial image load no longer blocks the lossless path. Rotate without crop, filters, or flips uses the same lossless save as the viewer.
             4. **Size-capped re-encode** — If lossless rotate cannot run, JPEG saves match the source quality and stay near the original file size instead of inflating at quality 90/100.
+            5. **Inherited viewer bug** — Fix for a bug inherited from the original code and still present in Fossify Gallery (FossifyOrg/Gallery#1157).
+
+            ## From 6.31
+
+            1. **Clean thumbnails** — The favorite star overlay is off by default. Turn it back on in Settings → Thumbnails → File thumbnail style → Mark favorite items.
+            2. **Darker dark theme** — Dark and Dark red backgrounds are `#111111` instead of `#2D2D2D`. Existing installs are moved over automatically.
+            3. **Save fixes** — Saving over the original on Android 11+ no longer stalls on an invalid MediaStore uri when the file is not indexed yet. List view thumbnails follow the Rounded corners / Square setting like the grid.
+            4. **Scroll-back** — Closing the viewer returns the folder grid to the photo you were on.
+            5. **Favorites** — Tap the star on a thumbnail or in the viewer; it updates without a reload. Overflow: Show favorites only. Folders stay filled after starring. Properties works on Favorites and Recycle Bin.
+            6. **EXIF orientation** — Viewer and pinch-zoom tiles honour the embedded orientation tag.
+            7. **Editor undo** — Undo last tool keeps up to 3 snapshots.
+            8. **Formats** — WebP pinch-zoom. Animated JPEG XL plays in the viewer.
+            9. **Android Trash / favorites** — Optional MediaStore trash on Android 11+ instead of the app Recycle Bin. Favorites also write `IS_FAVORITE` when the system allows it.
+            10. **Video trim** — Cut a clip to a start/end range and save it next to the original. The toolbar sits below the status bar.
+            11. **Save frame** — Grab the current video frame as a JPEG from the viewer or in-app player.
+            12. **Tags** — Add or remove tags from the grid or viewer (tap × on a chip). Commas make separate tags. Search matches tag names.
+            13. **Duplicates** — Scan a folder (or all) and delete extra copies. The overflow item sits above Settings.
+            14. **Collages** — CAB on 2–4 photos: side by side, stacked, or 2×2.
+            15. **Status-bar padding** — Trim video and 360° panorama toolbars no longer draw under the phone status bar.
+
+            ## From 6.30
+
+            1. **Lock and intents** — Untrusted viewer launches ignore skip-authentication and hidden-path extras. App lock uses a 5-minute grace. Settings import skips PIN-protected keys.
+            2. **Recycle Bin / backup** — Bin lives in `files/recycle_bin`. Android backup of the bin, database, and PIN hashes is off.
+            3. **JPEG optimize** — Atomic write-back, SAF restore on failure, skip Ultra HDR/container JPEGs. EXIF/XMP/ICC/IPTC kept.
+            4. **Editor** — Draw/text composite onto the full-res bitmap. Text and stickers rotate a full 360°. Double-tap text to edit it. Size slider max is 25% larger. Adjust uses a color-matrix preview. Image rotation keeps unsaved work; Back asks to discard.
+            5. **Motion photos** — Container:Item XMP is parsed per element. Extracted MP4s are deleted after playback.
+            6. **16 KB / size** — Native libs target 16 KB pages. GitHub ships arm64-v8a, armeabi-v7a, x86_64, and universal FOSS APKs.
+            7. **Stacks / share** — Optional stacking of RAW+JPEG, bursts, and edited copies. Optional strip of GPS/EXIF when sharing.
+            8. **Other** — Locked Favorites/Bin/widget thumbnails; hide/unhide race fix; seeking keeps pause; okio CVE bump; unit tests; translations for new strings.
+            9. **Android 16** — compileSdk/targetSdk 36. Media3 1.10.1, JPEG XL decoder 2.6.1.
+            10. **About / defaults** — Version line opens GitHub Releases. New installs: dark red theme (not Material You), `dd/MM/yyyy`, 24-hour clock, 1:1 zoom on, system video player. Color pickers default to red.
+            11. **Folders menu** — Show hidden and Show excluded are persistent overflow toggles. Tree view is a third option in Change view type: Grid, List, Tree.
+
+            ## From 6.29
+
+            1. **JPEG optimize** — jpegoptim: lossless Huffman or lossy max quality (default 85).
+            2. **Motion photos** — Play Google / Samsung motion photos in the viewer and save the embedded clip as an MP4.
+            3. **360° panoramas** — Open panoramas and photospheres in an OpenGL viewer (touch, pinch, gyroscope).
+            4. **Stacks** — Stack RAW+JPEG pairs, bursts, and edited copies in the grid.
+            5. **Metadata** — Remove GPS or all EXIF metadata from photos.
+            6. **Editor** — Font picker for text. Larger adjust slider labels. Toolbar sits below the status bar. Tap 4:3 or 16:9 again to switch to 3:4 or 9:16. Unchecking folder tree view restores the previous grid or list.
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

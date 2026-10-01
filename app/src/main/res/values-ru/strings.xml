@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Простая галерея</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Галерея</string>
     <string name="edit">Редактировать</string>
     <string name="open_camera">Камера</string>
@@ -446,7 +446,7 @@
     <string name="strip_metadata_on_share">Удалять GPS и EXIF при отправке</string>
     <string name="discard_unsaved_edits">Отменить несохранённые изменения?</string>
     <string name="history">История</string>
-    <string name="about_history_text">Simple-Gallery (GPL-3.0) была моей любимой FOSS-галереей, пока проект в 2023 году не продали сомнительной израильской компании ZipoApps. Я сделал форк, чтобы она оставалась живой, свободной и актуальной. Я буду выпускать новые версии, пока хватает времени и сил. Вклады в код на GitHub очень приветствуются :)</string>
+    <string name="about_history_text">Tomato Gallery — форк Simple-Gallery (GPL-3.0) с новыми функциями и улучшениями. Я буду выпускать новые версии, пока хватает времени и сил.</string>
     <string name="show_hidden">Показать скрытые</string>
     <string name="show_excluded">Показать исключённые</string>
     <string name="show_favorites_only">Показывать только избранное</string>

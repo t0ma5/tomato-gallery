@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/copy_text_holder"
+    android:layout_width="match_parent"
+    android:layout_height="360dp"
+    android:padding="@dimen/activity_margin">
+
+    <com.simplemobiletools.commons.views.MyTextView
+        android:id="@+id/copy_text_value"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textIsSelectable="true"
+        android:textSize="@dimen/bigger_text_size" />
+</ScrollView>

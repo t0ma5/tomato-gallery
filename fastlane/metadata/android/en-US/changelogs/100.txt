@@ -1,0 +1,5 @@
+• Application id is tomato.gallery (versionCode 100). It does not update the old tomato.simple.gallery install
+• Copy printed text and numbers from a photo (on-device PaddleOCR). A second run stays in the viewer
+• About history is the short fork sentence. Website opens the tomato-gallery GitHub repo
+• Version line shows 1.0 and the current month
+• Rolls up the notes from 6.29, 6.30, 6.31, and 6.31.1

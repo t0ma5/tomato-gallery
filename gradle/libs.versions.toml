@@ -32,6 +32,7 @@ media3Exoplayer = "1.10.1"
 okhttp = "4.12.0"
 okio = "3.18.2"
 picasso = "2.71828"
+ncnnPpocr = "v1.3.0"
 #build
 app-build-compileSDKVersion = "36"
 app-build-targetSDK = "36"
@@ -39,9 +40,9 @@ app-build-minimumSDK = "26"
 app-build-javaVersion = "VERSION_17"
 app-build-kotlinJVMTarget = "17"
 #versioning
-app-version-appId = "tomato.simple.gallery"
-app-version-versionCode = "402"
-app-version-versionName = "6.31.2"
+app-version-appId = "tomato.gallery"
+app-version-versionCode = "100"
+app-version-versionName = "1.0"
 subsamplingScaleImageView = "80efdaa570"
 [libraries]
 #AndroidX
@@ -79,6 +80,7 @@ avif-integration = { group = "com.github.bumptech.glide", name = "avif-integrati
 jxl-coder = { group = "io.github.awxkee", name = "jxl-coder", version.ref = "jxlDecoder" }
 jxl-integration = { group = "io.github.awxkee", name = "jxl-coder-glide", version.ref = "jxlDecoder" }
 picasso = { module = "com.squareup.picasso:picasso", version.ref = "picasso" }
+ncnn-ppocr = { module = "com.github.equationl.paddleocr4android:ncnnandroidppocr", version.ref = "ncnnPpocr" }
 [bundles]
 room = [
     "androidx-room-ktx",

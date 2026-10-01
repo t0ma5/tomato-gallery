@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Jednoduchá galéria</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galéria</string>
     <string name="edit">Upraviť</string>
     <string name="open_camera">Otvoriť fotoaparát</string>

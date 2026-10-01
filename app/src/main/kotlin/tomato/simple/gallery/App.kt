@@ -1,6 +1,7 @@
 package tomato.simple.gallery
 
 import android.app.Application
+import android.os.Build
 import com.github.ajalt.reprint.core.Reprint
 import com.simplemobiletools.commons.extensions.checkUseEnglish
 import com.squareup.picasso.Downloader
@@ -13,6 +14,9 @@ import tomato.simple.gallery.extensions.migrateLegacyRecycleBin
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
+        if (isOcrProcess()) {
+            return
+        }
         migrateLegacyRecycleBin()
         migrateDarkBackgroundColor()
         checkUseEnglish()
@@ -22,5 +26,14 @@ class App : Application() {
 
             override fun shutdown() {}
         }).build())
+    }
+
+    private fun isOcrProcess(): Boolean {
+        val name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            getProcessName()
+        } else {
+            return false
+        }
+        return name.endsWith(":ocr")
     }
 }

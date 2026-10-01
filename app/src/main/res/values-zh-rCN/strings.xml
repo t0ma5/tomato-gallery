@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">简单图库</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">图库</string>
     <string name="edit">编辑</string>
     <string name="open_camera">打开相机</string>
@@ -444,7 +444,7 @@
     <string name="strip_metadata_on_share">分享时去除 GPS 和 EXIF</string>
     <string name="discard_unsaved_edits">放弃未保存的编辑？</string>
     <string name="history">历史</string>
-    <string name="about_history_text">Simple-Gallery（GPL-3.0）曾是我最喜欢的 FOSS 图库应用，直到 2023 年该项目被卖给一家名为 ZipoApps 的可疑以色列公司。我分叉了它，好让它继续存活、保持开源并更新。只要我还有时间和精力，就会发布新版本。非常欢迎在 GitHub 上贡献代码 :)</string>
+    <string name="about_history_text">Tomato Gallery 是 Simple-Gallery（GPL-3.0）的分支，带有新功能与改进。只要我还有时间和精力，就会发布新版本。</string>
     <string name="show_hidden">显示隐藏</string>
     <string name="show_excluded">显示已排除</string>
     <string name="show_favorites_only">仅显示收藏</string>

@@ -1,10 +1,20 @@
 Changelog
 ==========
 
+Version 1.0 *(2026-10-01)*
+----------------------------
+
+ * Application id is tomato.gallery (versionCode 100). This does not update installs of tomato.simple.gallery
+ * Copy printed text and numbers from a photo with on-device PaddleOCR. A second run on the same photo stays in the viewer
+ * About history is the short fork sentence. Website opens https://github.com/t0ma5/tomato-gallery. Version line shows 1.0 and the current month
+ * Release notes roll up 6.29 through 6.31.1. The 6.31.2 note is not repeated
+
 Version 6.31.2 *(2026-09-25)*
 ----------------------------
 
  * Grid thumbnails stay bound to the file in that cell. A slow video thumbnail can no longer keep showing the previous file, which led to deleting the wrong item.
+ * Copy printed text and numbers from a photo with on-device PaddleOCR
+ * About name is Tomato Gallery. The Android launcher name stays Gallery. Release APKs are named `Tomato-Gallery_<version>-FOSS-<abi>.apk`
 
 Version 6.31.1 *(2026-09-23)*
 ----------------------------

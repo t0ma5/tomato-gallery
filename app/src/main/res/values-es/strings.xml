@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Galería Sencilla</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galería</string>
     <string name="edit">Editar</string>
     <string name="open_camera">Abrir la cámara</string>
@@ -46,9 +46,9 @@
     <string name="change_filters_underlined"><u>Cambiar filtros</u></string>
     <!-- Hide / Exclude -->
     <string name="hide_folder_description">Esta función oculta la carpeta agregando un archivo \'.nomedia\' en ella, y también ocultará las subcarpetas. Puede mostrarlas modificando la opción \'Mostrar carpetas ocultas\' en los Ajustes. ¿Continuar\?</string>
-    <string name="exclude_folder_description">Esto excluirá la selección junto con sus subcarpetas, solamente de Simple Gallery. Puede gestionar las carpetas excluidas en los Ajustes.</string>
+    <string name="exclude_folder_description">Esto excluirá la selección junto con sus subcarpetas, solamente de Tomato Gallery. Puede gestionar las carpetas excluidas en los Ajustes.</string>
     <string name="exclude_folder_parent">¿Excluir mejor la carpeta superior\?</string>
-    <string name="excluded_activity_placeholder">La opción de excluir las carpetas las excluirá junto a sus subcarpetas sólo en Simple Gallery, estas seguirán siendo visibles en otras aplicaciones.
+    <string name="excluded_activity_placeholder">La opción de excluir las carpetas las excluirá junto a sus subcarpetas sólo en Tomato Gallery, estas seguirán siendo visibles en otras aplicaciones.
 \n
 \nSi desea ocultarlo de otras aplicaciones, utilice la función \"Ocultar\".</string>
     <string name="hidden_folders">Carpetas ocultas</string>
@@ -114,7 +114,7 @@
     <string name="other_aspect_ratio">Otro</string>
     <!-- available as an option: 1:1, 4:3, 16:9, free, other -->
     <!-- Set wallpaper -->
-    <string name="simple_wallpaper">Fondos de pantalla Simple Gallery</string>
+    <string name="simple_wallpaper">Fondos de pantalla Tomato Gallery</string>
     <string name="set_as_wallpaper">Establecer como fondo de pantalla</string>
     <string name="set_as_wallpaper_failed">Error al establecer el fondo de pantalla</string>
     <string name="set_as_wallpaper_with">Establecer como fondo de pantalla con:</string>
@@ -347,8 +347,8 @@
     <string name="pesdk_common_title_pipettableColor">Color pipetable</string>
     <string name="vesdk_video_trim_title_name">Recortar</string>
     <!-- FAQ -->
-    <string name="faq_1_title">¿Cómo puedo hacer que Simple Gallery sea la galería de dispositivos predeterminada\?</string>
-    <string name="faq_1_text">Primero tiene que encontrar la galería predeterminada actualmente en la sección Aplicaciones de la configuración de su dispositivo, busque un botón que diga algo como \"Abrir por defecto \", haga clic en él, luego seleccione \"Borrar valores predeterminados \". La próxima vez que intente abrir una imagen o video, debería ver un selector de aplicaciones, donde puede seleccionar Simple Gallery y convertirla en la aplicación predeterminada.</string>
+    <string name="faq_1_title">¿Cómo puedo hacer que Tomato Gallery sea la galería de dispositivos predeterminada\?</string>
+    <string name="faq_1_text">Primero tiene que encontrar la galería predeterminada actualmente en la sección Aplicaciones de la configuración de su dispositivo, busque un botón que diga algo como \"Abrir por defecto \", haga clic en él, luego seleccione \"Borrar valores predeterminados \". La próxima vez que intente abrir una imagen o video, debería ver un selector de aplicaciones, donde puede seleccionar Tomato Gallery y convertirla en la aplicación predeterminada.</string>
     <string name="faq_2_title">He protegido la aplicación con una contraseña, pero la he olvidado. ¿Que puedo hacer\?</string>
     <string name="faq_2_text">Puede resolverlo de 2 maneras. Puede reinstalar la aplicación o encontrar la aplicación en la configuración de su dispositivo y seleccionar \"Borrar datos \". Restablecerá todas sus configuraciones, no eliminará ningún archivo multimedia.</string>
     <string name="faq_3_title">¿Cómo puedo hacer que un álbum siempre aparezca en la parte superior\?</string>
@@ -356,7 +356,7 @@
     <string name="faq_4_title">¿Cómo puedo avanzar videos\?</string>
     <string name="faq_4_text">Puede hacerlo tocando dos veces el costado de la pantalla o tocando los textos de duración actual o máxima cerca de la barra de búsqueda. Si habilita la apertura de videos en una pantalla separada en la configuración de la aplicación, también puede usar gestos horizontales.</string>
     <string name="faq_5_title">¿Cuál es la diferencia entre ocultar y excluir una carpeta\?</string>
-    <string name="faq_5_text">Excluir evita mostrar la carpeta solo en Simple Gallery, mientras que Ocultar funciona en el sistema y oculta la carpeta de otras galerías también. Funciona al crear un archivo \".nomedia \" vacío en la carpeta determinada, que luego puede eliminar también con cualquier administrador de archivos. Tenga en cuenta que algunos dispositivos no permiten ocultar carpetas como Cámara, Capturas de pantalla y Descargas.</string>
+    <string name="faq_5_text">Excluir evita mostrar la carpeta solo en Tomato Gallery, mientras que Ocultar funciona en el sistema y oculta la carpeta de otras galerías también. Funciona al crear un archivo \".nomedia \" vacío en la carpeta determinada, que luego puede eliminar también con cualquier administrador de archivos. Tenga en cuenta que algunos dispositivos no permiten ocultar carpetas como Cámara, Capturas de pantalla y Descargas.</string>
     <string name="faq_6_title">¿Por qué aparecen las carpetas con la portada de la música o las pegatinas\?</string>
     <string name="faq_6_text">Puede suceder que vea aparecer algunos álbumes inusuales. Puede excluirlos fácilmente presionándolos durante mucho tiempo y seleccionando Excluir. En el siguiente cuadro de diálogo, puede seleccionar la carpeta principal, lo más probable es que evite que aparezcan otros álbumes relacionados.</string>
     <string name="faq_7_title">Una carpeta con imágenes no aparece, ¿qué puedo hacer\?</string>
@@ -445,7 +445,7 @@
     <string name="strip_metadata_on_share">Quitar GPS y EXIF al compartir</string>
     <string name="discard_unsaved_edits">¿Descartar cambios no guardados?</string>
     <string name="history">Historia</string>
-    <string name="about_history_text">Simple-Gallery (GPL-3.0) era mi galería FOSS favorita hasta que el proyecto se vendió en 2023 a una empresa israelí turbia llamada ZipoApps. La bifurqué para mantenerla viva, FOSS y actualizada. Publicaré versiones nuevas mientras tenga tiempo y energía. Las contribuciones de código en GitHub son muy bienvenidas :)</string>
+    <string name="about_history_text">Tomato Gallery es una bifurcación de Simple-Gallery (GPL-3.0) con funciones nuevas y mejoras. Publicaré versiones nuevas mientras tenga tiempo y energía.</string>
     <string name="show_hidden">Mostrar ocultos</string>
     <string name="show_excluded">Mostrar excluidos</string>
     <string name="show_favorites_only">Mostrar solo favoritos</string>

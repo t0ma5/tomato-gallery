@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Simple Gallery</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galeria</string>
     <string name="edit">Editar</string>
     <string name="open_camera">Abrir câmara</string>
@@ -48,7 +48,7 @@
     <string name="hide_folder_description">Esta função oculta a pasta, adicionando-lhe um ficheiro \'.nomedia\' e ocultará também todas as subpastas nela existentes. Pode ver as pastas com a opção \'Mostrar pastas ocultas\'. Continuar\?</string>
     <string name="exclude_folder_description">As pastas selecionadas, bem como as suas subpastas serão excluídas apenas e só nesta aplicação. Pode gerir as pastas excluídas nas Definições.</string>
     <string name="exclude_folder_parent">Excluir antes a pasta superior\?</string>
-    <string name="excluded_activity_placeholder">Excluir pastas – e implicitamente, as suas subpastas também – faz com que deixem de ser apresentadas apenas e só na Simple Gallery. Continuarão visíveis noutras aplicações.
+    <string name="excluded_activity_placeholder">Excluir pastas – e implicitamente, as suas subpastas também – faz com que deixem de ser apresentadas apenas e só na Tomato Gallery. Continuarão visíveis noutras aplicações.
 \n
 \nSe as quiser ocultar também noutras aplicações, utilize a função Ocultar.</string>
     <string name="hidden_folders">Pastas ocultas</string>
@@ -347,8 +347,8 @@
     <string name="pesdk_common_title_pipettableColor">Pipeta de cores</string>
     <string name="vesdk_video_trim_title_name">Recortar</string>
     <!-- FAQ -->
-    <string name="faq_1_title">Como tornar Simple Gallery a minha galeria padrão\?</string>
-    <string name="faq_1_text">Primeiro, identifique a galeria padrão do sistema em Definições -&gt; Gerir aplicações. Na informação da aplicação dessa mesma galeria, selecione Limpar predefinições. Da próxima vez que tentar abrir um ficheiro de imagem ou de vídeo, irá deparar-se com diversas alternativas. Escolha então Simple Gallery e escolha-a para abrir sempre os ficheiros deste tipo.</string>
+    <string name="faq_1_title">Como tornar Tomato Gallery a minha galeria padrão\?</string>
+    <string name="faq_1_text">Primeiro, identifique a galeria padrão do sistema em Definições -&gt; Gerir aplicações. Na informação da aplicação dessa mesma galeria, selecione Limpar predefinições. Da próxima vez que tentar abrir um ficheiro de imagem ou de vídeo, irá deparar-se com diversas alternativas. Escolha então Tomato Gallery e escolha-a para abrir sempre os ficheiros deste tipo.</string>
     <string name="faq_2_title">Bloqueei a aplicação com uma palavra-passe mas agora esqueci-me dela. O que posso fazer\?</string>
     <string name="faq_2_text">Existem duas soluções. Reinstala a aplicação ou, nas Definições do sistema –&gt; Gerir aplicações –&gt; Informações da aplicação, seleccone Limpar dados. Reiniciará assim todas as suas definições na aplicação mas não apagará os seus ficheiros multimedia.</string>
     <string name="faq_3_title">Como posso fazer para que um álbum seja sempre mostrado no topo\?</string>
@@ -356,7 +356,7 @@
     <string name="faq_4_title">Como posso fazer avançar rápido os videos\?</string>
     <string name="faq_4_text">Dando dois toques nas margens ecrã ou então dando um toque em cima da indicação de duração junto à barra de pesquisa. E, se a opção de abrir videos noutro ecrã estiver habilitada, pode também fazê-lo por gestos.</string>
     <string name="faq_5_title">Qual a diferença entre ocultar e excluir uma pasta\?</string>
-    <string name="faq_5_text">Excluir impede que a pasta seja apresentada unicamente na Simple Gallery, enquanto Ocultar é adoptado por todo o sistema e esconde a pasta noutras galerias também. Funciona criando um ficheiro \".nomedia\" vazio dentro de uma pasta, que pode ser simplesmente removido através de um gestor de ficheiros. Tenha em atenção que alguns dispositivos não permitem Ocultar pastas tais como a da Câmera, a da Captura de ecrã e a das Transferências.</string>
+    <string name="faq_5_text">Excluir impede que a pasta seja apresentada unicamente na Tomato Gallery, enquanto Ocultar é adoptado por todo o sistema e esconde a pasta noutras galerias também. Funciona criando um ficheiro \".nomedia\" vazio dentro de uma pasta, que pode ser simplesmente removido através de um gestor de ficheiros. Tenha em atenção que alguns dispositivos não permitem Ocultar pastas tais como a da Câmera, a da Captura de ecrã e a das Transferências.</string>
     <string name="faq_6_title">Porque são apresentadas capas de albuns ou stickers\?</string>
     <string name="faq_6_text">Pode dar-se o caso de alguns items invulgares aparecerem. Consegue exclui-los premindo longamente e seleccionando Excluir. Na caixa de diálogo seguinte, escolha a pasta superior na hierarquia. Provavelmente, isso irá impedir que outros itens semelhantes sejam apresentados também.</string>
     <string name="faq_7_title">Uma pasta com imagens não é apresentada ou não mostra todos os itens lá contidos. O que posso fazer\?</string>

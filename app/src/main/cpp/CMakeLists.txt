@@ -65,3 +65,7 @@ target_link_libraries(jpegoptim-jni
     jpeg-static
     ${log-lib}
 )
+
+add_library(ocr-threads SHARED ocr_threads.c)
+target_link_options(ocr-threads PRIVATE "-Wl,-z,max-page-size=16384")
+target_link_libraries(ocr-threads ${log-lib})

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">シンプルギャラリー</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">ギャラリー</string>
     <string name="edit">編集</string>
     <string name="open_camera">カメラを開く</string>
@@ -442,7 +442,7 @@
     <string name="strip_metadata_on_share">共有時に GPS と EXIF を削除</string>
     <string name="discard_unsaved_edits">未保存の編集を破棄しますか？</string>
     <string name="history">沿革</string>
-    <string name="about_history_text">Simple-Gallery（GPL-3.0）は、2023 年にプロジェクトが ZipoApps という疑わしいイスラエル企業に売却されるまで、私の一番好きな FOSS ギャラリーアプリでした。存続し、FOSS のまま更新し続けるためにフォークしました。時間と気力がある限り新しいバージョンを出します。GitHub でのコード貢献を歓迎します :)</string>
+    <string name="about_history_text">Tomato Gallery は Simple-Gallery（GPL-3.0）のフォークで、新しい機能と改善を加えています。時間と気力がある限り新しいバージョンを出します。</string>
     <string name="show_hidden">非表示を表示</string>
     <string name="show_excluded">除外を表示</string>
     <string name="show_favorites_only">お気に入りのみ表示</string>

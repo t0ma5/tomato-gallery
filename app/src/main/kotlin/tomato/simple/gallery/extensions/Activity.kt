@@ -252,7 +252,7 @@ fun SimpleActivity.launchSettings() {
 fun SimpleActivity.launchAbout() {
     val licenses = LICENSE_GLIDE or LICENSE_CROPPER or LICENSE_RTL or LICENSE_SUBSAMPLING or LICENSE_PATTERN or LICENSE_REPRINT or LICENSE_GIF_DRAWABLE or
         LICENSE_PICASSO or LICENSE_EXOPLAYER or LICENSE_PANORAMA_VIEW or LICENSE_SANSELAN or LICENSE_FILTERS or LICENSE_GESTURE_VIEWS or LICENSE_APNG or
-        LICENSE_JPEGOPTIM
+        LICENSE_JPEGOPTIM or LICENSE_PADDLEOCR
 
     val faqItems = arrayListOf(
         FAQItem(R.string.faq_3_title, R.string.faq_3_text),
@@ -289,7 +289,13 @@ fun SimpleActivity.launchAbout() {
         faqItems.removeIf { it.text == R.string.faq_8_text }
     }
 
-    startAboutActivity(R.string.app_name, licenses, "${BuildConfig.VERSION_NAME} (Sept 2026)", faqItems, true)
+    startAboutActivity(R.string.app_name, licenses, "${BuildConfig.VERSION_NAME} (${aboutMonthYear()})", faqItems, true)
+}
+
+private fun aboutMonthYear(): String {
+    val calendar = java.util.Calendar.getInstance()
+    val month = java.text.DateFormatSymbols(java.util.Locale.US).months[calendar.get(java.util.Calendar.MONTH)]
+    return "$month ${calendar.get(java.util.Calendar.YEAR)}"
 }
 
 fun BaseSimpleActivity.handleMediaManagementPrompt(callback: () -> Unit) {

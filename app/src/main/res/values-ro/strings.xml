@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Galerie simplă</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galerie</string>
     <string name="edit">Editaţi</string>
     <string name="open_camera">Deschide camera</string>
@@ -46,9 +46,9 @@
     <string name="change_filters_underlined"><u>Schimbă filtrele</u></string>
     <!-- Hide / Exclude -->
     <string name="hide_folder_description">Această funcție ascunde dosarul prin adăugarea unui fișier \'.nomedia\' în el, ascunzând și toate subdosarele. Le poţi vedea prin activarea opțiunii \'Afișați elementele ascunse\' din Setări. Continuați\?</string>
-    <string name="exclude_folder_description">Acest lucru va exclude selecția, împreună cu subdosarele sale, numai din Simple Gallery. Poţi gestiona dosarele excluse în Setări.</string>
+    <string name="exclude_folder_description">Acest lucru va exclude selecția, împreună cu subdosarele sale, numai din Tomato Gallery. Poţi gestiona dosarele excluse în Setări.</string>
     <string name="exclude_folder_parent">Exclude dosarul părinte în schimb\?</string>
-    <string name="excluded_activity_placeholder">Excluderea dosarelor le va face ca acestea, împreună cu subdosarele lor, să fie ascunse doar în Simple Gallery, ele vor fi în continuare vizibile în alte aplicații.
+    <string name="excluded_activity_placeholder">Excluderea dosarelor le va face ca acestea, împreună cu subdosarele lor, să fie ascunse doar în Tomato Gallery, ele vor fi în continuare vizibile în alte aplicații.
 \n
 \nDacă doreşti să le ascunzi și pentru alte aplicații, utilizează funcția Ascundere.</string>
     <string name="hidden_folders">Dosare ascunse</string>
@@ -346,8 +346,8 @@
     <string name="pesdk_common_title_pipettableColor">Culoare pipetabilă</string>
     <string name="vesdk_video_trim_title_name">Trim</string>
     <!-- FAQ -->
-    <string name="faq_1_title">Cum pot face ca Simple Gallery să fie galeria implicită a dispozitivului\?</string>
-    <string name="faq_1_text">Mai întâi trebuie să găsiți galeria implicită curentă în secțiunea Aplicații din setările dispozitivului, căutați un buton pe care scrie ceva de genul a \"Setare ca implicită\", apăsaţi pe acesta, apoi selectați \"Ştergeţi valorile implicite\". Data viitoare când veți încerca să deschideți o imagine sau un videoclip, ar trebui să vedeți un selector de aplicații, unde puteți selecta Simple Gallery și să o transformați în aplicația implicită.</string>
+    <string name="faq_1_title">Cum pot face ca Tomato Gallery să fie galeria implicită a dispozitivului\?</string>
+    <string name="faq_1_text">Mai întâi trebuie să găsiți galeria implicită curentă în secțiunea Aplicații din setările dispozitivului, căutați un buton pe care scrie ceva de genul a \"Setare ca implicită\", apăsaţi pe acesta, apoi selectați \"Ştergeţi valorile implicite\". Data viitoare când veți încerca să deschideți o imagine sau un videoclip, ar trebui să vedeți un selector de aplicații, unde puteți selecta Tomato Gallery și să o transformați în aplicația implicită.</string>
     <string name="faq_2_title">Am blocat aplicația cu o parolă, dar am uitat-o. Ce pot să fac\?</string>
     <string name="faq_2_text">Puteți rezolva acest lucru în 2 moduri. Puteți fie reinstala aplicația, fie găsiți aplicația în setările dispozitivului și în secţiunea de stocare a aplicaţiei selectați \"Golire date\". Aceasta va reseta toate setările, dar nu va elimina niciun fișier media.</string>
     <string name="faq_3_title">Cum pot face ca un album să apară întotdeauna în partea de sus\?</string>
@@ -355,7 +355,7 @@
     <string name="faq_4_title">Cum pot să rulez rapid videoclipurile\?</string>
     <string name="faq_4_text">Puteți face acest lucru atingând de două ori partea laterală a ecranului sau atingând textele privind durata curentă sau durata maximă de lângă bara de căutare. Dacă activați deschiderea videoclipurilor pe un ecran separat în setările aplicației, puteți utiliza și gesturile orizontale.</string>
     <string name="faq_5_title">Care este diferența dintre ascunderea și excluderea unui dosar\?</string>
-    <string name="faq_5_text">Exclude previne afișarea dosarului doar în Simple Gallery, în timp ce Hide funcționează la nivel de sistem și ascunde dosarul și din alte galerii. Funcționează prin crearea unui fișier gol \".nomedia\" în dosarul dat, pe care îl puteți elimina apoi și cu orice manager de fișiere. Rețineți că unele dispozitive nu permit ascunderea unor dosare precum Camera, Imagini de ecran și Descărcări.</string>
+    <string name="faq_5_text">Exclude previne afișarea dosarului doar în Tomato Gallery, în timp ce Hide funcționează la nivel de sistem și ascunde dosarul și din alte galerii. Funcționează prin crearea unui fișier gol \".nomedia\" în dosarul dat, pe care îl puteți elimina apoi și cu orice manager de fișiere. Rețineți că unele dispozitive nu permit ascunderea unor dosare precum Camera, Imagini de ecran și Descărcări.</string>
     <string name="faq_6_title">De ce apar dosarele cu coperte de muzică sau autocolante\?</string>
     <string name="faq_6_text">Se poate întâmpla să apară albume neobișnuite. Le puteți exclude cu ușurință apăsând lung pe ele și selectând Excludere. În următoarea fereastră de dialog, puteți selecta dosarul părinte, ceea ce va împiedica apariția celorlalte albume aferente.</string>
     <string name="faq_7_title">Un dosar cu imagini nu apare sau nu afișează toate elementele. Ce pot să fac\?</string>

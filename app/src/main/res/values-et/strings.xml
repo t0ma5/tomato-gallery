@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Lihtne galerii</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">Galerii</string>
     <string name="edit">Muuda</string>
     <string name="open_camera">Ava kaamera</string>
@@ -346,7 +346,7 @@
     <string name="pesdk_common_title_pipettableColor">Pipeteeritav värv</string>
     <string name="vesdk_video_trim_title_name">Video kärpimine</string>
     <!-- FAQ -->
-    <string name="faq_1_title">Kuidas saan teha Simple Gallery seadme vaikimisi galeriiks\?</string>
+    <string name="faq_1_title">Kuidas saan teha Tomato Gallery seadme vaikimisi galeriiks\?</string>
     <string name="faq_1_text">Kõigepealt otsi seadme seadete rakenduste valikust praegune vaikimisi galerii, leia nupp, millel on midagi sellist nagu „Ava vaikimisi“, klõpsa sellel ja vali „Tühista vaikimisi“. Järgmine kord, kui proovid pilti või videot avada, peaksid nägema rakenduste valijat, kus saad valida Lihtsa galerii ja teha selle vaikimisi rakenduseks.</string>
     <string name="faq_2_title">Lukustasin rakenduse salasõnaga, kuid unustasin selle. Mida ma saan teha\?</string>
     <string name="faq_2_text">Seda saad lahendada kahel viisil. Võid kas paigaldada rakenduse uuesti või otsi rakenduse kirje oma seadme seadistustest ja vali „Tühjenda andmed“. See nullib kõik sinu seadistused, see ei eemalda ühtegi meediafaili.</string>
@@ -355,7 +355,7 @@
     <string name="faq_4_title">Kuidas saan videoid kiiresti edasi kerida\?</string>
     <string name="faq_4_text">Seda saad teha, kui topeltkoputad ekraani küljele või koputad praeguse või maksimaalse kestuse tekstidele otsinguriba lähedal. Kui lubad rakenduse seadetes videote avamise eraldi ekraanil, saate kasutada ka horisontaalseid viipeid.</string>
     <string name="faq_5_title">Mis vahe on kausta varjamise ja väljajätmise vahel\?</string>
-    <string name="faq_5_text">Exclude takistab kausta kuvamist ainult Simple Gallery\'s, samas kui Hide töötab süsteemipõhiselt ja peidab kausta ka teistest galeriidest. See töötab, luues antud kausta tühja \".nomedia\" faili, mille saate seejärel eemaldada ka mis tahes failihalduriga. Pange tähele, et mõned seadmed ei võimalda kaustade, nagu Camera, Screenshots ja Downloads, peitmist.</string>
+    <string name="faq_5_text">Exclude takistab kausta kuvamist ainult Tomato Gallery\'s, samas kui Hide töötab süsteemipõhiselt ja peidab kausta ka teistest galeriidest. See töötab, luues antud kausta tühja \".nomedia\" faili, mille saate seejärel eemaldada ka mis tahes failihalduriga. Pange tähele, et mõned seadmed ei võimalda kaustade, nagu Camera, Screenshots ja Downloads, peitmist.</string>
     <string name="faq_6_title">Miks ilmuvad kaustad muusika kaanekujundusega või kleebised\?</string>
     <string name="faq_6_text">Võib juhtuda, et ilmub mõni ebatavaline album. Saate need hõlpsasti välja jätta, vajutades pikalt ja valides Exclude (Väljaarvamine). Järgmises dialoogis saate seejärel valida vanemkausta, mis tõenäoliselt takistab ka teiste seotud albumite ilmumist.</string>
     <string name="faq_7_title">Kaust, kus on pilte, ei ilmu või ei näita kõiki objekte. Mida ma saan teha\?</string>

@@ -1,2 +1,4 @@
 • Grid thumbnails stay on the file in that cell
 • A slow video thumbnail can no longer show the previous file
+• Copy printed text and numbers from a photo (on-device PaddleOCR)
+• App name is Tomato Gallery. Launcher name stays Gallery.

@@ -617,5 +617,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+
+        <service
+            android:name=".helpers.OcrService"
+            android:exported="false"
+            android:process=":ocr" />
     </application>
 </manifest>

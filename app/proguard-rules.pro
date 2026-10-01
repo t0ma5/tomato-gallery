@@ -7,6 +7,7 @@
 -keep class com.awxkee.** { *; }
 -dontwarn com.awxkee.**
 -keep class com.github.penfeizhou.** { *; }
+-keep class com.equationl.ncnnandroidppocr.** { *; }
 
 # Picasso
 -dontwarn javax.annotation.**

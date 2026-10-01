@@ -1,4 +1,4 @@
-# Simple Gallery
+# Tomato Gallery
 
 <img alt="Logo" src="graphics/icon.png" width="120" />
 
@@ -9,25 +9,26 @@
 <img alt="Lock" src="fastlane/metadata/android/en-US/images/phoneScreenshots/5_en-US.jpeg" width="22%">
 </div>
 
-No ads or unnecessary permissions. It is fully open source and provides customizable colors. No internet access required; photos stay on the device.
+No ads or unnecessary permissions. It is fully open source and provides customizable colors. No internet access required; photos stay on the device. The Android launcher name is Gallery.
 
 ## History
 
-[Simple-Gallery](https://github.com/SimpleMobileTools/Simple-Gallery) (GPL-3.0) was my favorite FOSS gallery app until the project was sold to a shady Israeli company named ZipoApps in 2023. I forked it to keep it alive, FOSS and updated. I will release new versions as long as I have time and energy. Code contributions on [GitHub](https://github.com/t0ma5/Simple-Gallery) are very welcome :)
+[Simple-Gallery](https://github.com/SimpleMobileTools/Simple-Gallery) (GPL-3.0) was my favorite FOSS gallery app until the project was sold to a shady Israeli company named ZipoApps in 2023. I forked it to keep it alive, FOSS and updated. I will release new versions as long as I have time and energy. Code contributions on [GitHub](https://github.com/t0ma5/tomato-gallery) are very welcome :)
 
 This fork is not affiliated with Simple Mobile Tools, Fossify, or ZipoApps.
 
-APKs are published on [GitHub Releases](https://github.com/t0ma5/Simple-Gallery/releases)
-- `Simple-Gallery_<version>-FOSS-arm64-v8a.apk` (most phones)
-- `Simple-Gallery_<version>-FOSS-armeabi-v7a.apk`
-- `Simple-Gallery_<version>-FOSS-x86_64.apk` (emulators)
-- `Simple-Gallery_<version>-FOSS-universal.apk` (all included)
+APKs are published on [GitHub Releases](https://github.com/t0ma5/tomato-gallery/releases)
+- `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk` (most phones)
+- `Tomato-Gallery_<version>-FOSS-armeabi-v7a.apk`
+- `Tomato-Gallery_<version>-FOSS-x86_64.apk` (emulators)
+- `Tomato-Gallery_<version>-FOSS-universal.apk` (all included)
 
 ## New features in this fork
 
-The Simple Gallery Pro workflow, plus a FOSS editor, AVIF/JXL, motion photos, and 360° panoramas. Still offline, still GPL-3.0.
+The Simple Gallery Pro workflow, plus a completely FOSS editor, OCR, AVIF/JXL, motion photos, 360° panoramas, and much more. Still offline, still FOSS and GPL-3.0
 
 **Edit**
+- **Copy text OCR** — Viewer overflow reads printed text and numbers on a photo and copies them. On-device PaddleOCR (PP-OCRv5) engine and model files. Nothing is uploaded. This adds ~20MB extra to the apk file but it's a handy feature I wanted to have.
 - **FOSS photo editor** — Crop, rotate, resize, draw, filters, tone sliders, and text/emoji stickers. Tools stack in one session. Undo last tool (up to 3). No proprietary SDK.
 - **Editor stickers** — 6-column emoji grid (arrows, markers, faces) plus More for the system emoji picker.
 - **Lossless JPEG rotate** — Viewer rotate/save and editor rotate-only keep original quality and size. Save as no longer crashes on EXIF write.
@@ -63,20 +64,20 @@ The Simple Gallery Pro workflow, plus a FOSS editor, AVIF/JXL, motion photos, an
 - **Strip metadata** — Remove GPS or all EXIF from photos, or when sharing.
 
 **No nags**
-- No donation prompts. Own app ID (`tomato.simple.gallery`) so it can sit next to Simple Gallery Pro.
+- No donation prompts.
 
 ## Build
 
 Release APKs come from `assembleFossRelease` (local and GitHub Actions). Names:
 
-- `Simple-Gallery_<version>-FOSS-arm64-v8a.apk`
-- `Simple-Gallery_<version>-FOSS-armeabi-v7a.apk`
-- `Simple-Gallery_<version>-FOSS-x86_64.apk`
-- `Simple-Gallery_<version>-FOSS-universal.apk`
+- `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk`
+- `Tomato-Gallery_<version>-FOSS-armeabi-v7a.apk`
+- `Tomato-Gallery_<version>-FOSS-x86_64.apk`
+- `Tomato-Gallery_<version>-FOSS-universal.apk`
 
 | Item | Value |
 | --- | --- |
-| App version | 6.31.2 (versionCode 402) |
+| App version | 1.0 (versionCode 100) |
 | minSdk | 26 |
 | targetSdk / compileSdk | 36 (Android 16) |
 | JVM bytecode | 17 |

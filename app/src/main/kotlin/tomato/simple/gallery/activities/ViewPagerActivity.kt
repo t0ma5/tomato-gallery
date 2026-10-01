@@ -46,6 +46,8 @@ import tomato.simple.gallery.R
 import tomato.simple.gallery.adapters.MyPagerAdapter
 import tomato.simple.gallery.asynctasks.GetMediaAsynctask
 import tomato.simple.gallery.databinding.ActivityMediumBinding
+import tomato.simple.gallery.databinding.DialogCopyTextProgressBinding
+import tomato.simple.gallery.dialogs.CopyTextDialog
 import tomato.simple.gallery.dialogs.DeleteWithRememberDialog
 import tomato.simple.gallery.dialogs.OptimizeJpegsDialog
 import tomato.simple.gallery.dialogs.SaveAsDialog
@@ -63,6 +65,7 @@ import kotlin.math.min
 @Suppress("UNCHECKED_CAST")
 class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, ViewPagerFragment.FragmentListener {
     private var mPath = ""
+    private var copyTextInProgress = false
     private var mDirectory = ""
     private var mIsFullScreen = false
     private var mPos = -1
@@ -187,6 +190,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                 findItem(R.id.menu_set_as).isVisible = visibleBottomActions and BOTTOM_ACTION_SET_AS == 0
                 findItem(R.id.menu_copy_to).isVisible = visibleBottomActions and BOTTOM_ACTION_COPY == 0
                 findItem(R.id.menu_copy_to_clipboard).isVisible = currentMedium.isImage()
+                findItem(R.id.menu_copy_text).isVisible = currentMedium.isImage()
         findItem(R.id.menu_move_to).isVisible = visibleBottomActions and BOTTOM_ACTION_MOVE == 0 && !currentMedium.getIsInRecycleBin()
                 findItem(R.id.menu_save_as).isVisible = rotationDegrees != 0
                 findItem(R.id.menu_print).isVisible = currentMedium.isImage() || currentMedium.isRaw()
@@ -248,6 +252,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                 R.id.menu_slideshow -> initSlideshow()
                 R.id.menu_copy_to -> checkMediaManagementAndCopy(true)
                 R.id.menu_copy_to_clipboard -> copyImageToClipboard()
+                R.id.menu_copy_text -> copyTextFromPhoto()
                 R.id.menu_move_to -> moveFileTo()
                 R.id.menu_open_with -> openPath(getCurrentPath(), true)
                 R.id.menu_hide -> toggleFileVisibility(true)
@@ -1160,6 +1165,41 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         val clip = android.content.ClipData.newUri(contentResolver, "Image", uri)
         clipboard.setPrimaryClip(clip)
         toast(R.string.copied_to_clipboard)
+    }
+
+    private fun copyTextFromPhoto() {
+        if (copyTextInProgress) {
+            return
+        }
+        val path = getCurrentPath()
+        if (path.isEmpty()) {
+            return
+        }
+        val medium = getCurrentMedium() ?: return
+        if (!medium.isImage()) {
+            return
+        }
+
+        copyTextInProgress = true
+        val binding = DialogCopyTextProgressBinding.inflate(layoutInflater)
+        getAlertDialogBuilder()
+            .setCancelable(false)
+            .apply {
+                setupDialogStuff(binding.root, this, R.string.copy_text, cancelOnTouchOutside = false) { progressDialog ->
+                    OcrService.recognize(applicationContext, path) { outcome ->
+                        copyTextInProgress = false
+                        if (isFinishing || isDestroyed) {
+                            return@recognize
+                        }
+                        progressDialog.dismiss()
+                        when (outcome) {
+                            is PhotoOcrResult.Text -> CopyTextDialog(this@ViewPagerActivity, outcome.text)
+                            PhotoOcrResult.Empty -> toast(R.string.no_text_found)
+                            PhotoOcrResult.Failed -> toast(R.string.copy_text_failed)
+                        }
+                    }
+                }
+            }
     }
 
     private fun resizeImage() {

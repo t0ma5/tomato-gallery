@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">簡易相簿</string>
+    <string name="app_name">Tomato Gallery</string>
     <string name="app_launcher_name">相簿</string>
     <string name="edit">編輯</string>
     <string name="open_camera">開啟相機</string>

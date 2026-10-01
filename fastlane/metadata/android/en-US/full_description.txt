@@ -1,4 +1,4 @@
-Simple Gallery is a FOSS Android gallery for browsing, organizing, and editing photos and videos. Browse albums, recover files from the recycle bin, hide folders, and lock the app or individual albums with a PIN, pattern, or fingerprint.
+Tomato Gallery is a FOSS Android gallery for browsing, organizing, and editing photos and videos. Browse albums, recover files from the recycle bin, hide folders, and lock the app or individual albums with a PIN, pattern, or fingerprint. The launcher name is Gallery.
 
 This independent fork of Simple Gallery Pro keeps the original album browser and adds formats and tools the Play Store app does not ship. It is not affiliated with Simple Mobile Tools or Fossify.
 
@@ -6,10 +6,10 @@ PHOTO EDITOR
 Crop, rotate, resize, draw, apply filters, adjust tone, and add text or emoji stickers. Tools stack in one session. EXIF is kept on save when possible, including SAF URIs.
 
 FILES AND FORMATS
-JPEG, PNG, GIF, WebP, AVIF, JPEG XL, RAW, SVG, MP4, MKV, motion photos, and 360° panoramas. Open with, wallpaper, print, and share still work.
+JPEG, PNG, GIF, WebP, AVIF, JPEG XL, RAW, SVG, MP4, MKV, motion photos, and 360° panoramas. Open with, wallpaper, print, and share still work. Copy printed text and numbers from a photo with on-device PaddleOCR.
 
 ORGANIZE
 Recycle bin with restore, favorites, folder tree, include/exclude, hide, copy/move, batch rename, and JPEG optimize. Optional stacking of RAW+JPEG, bursts, and edited copies. Optional strip of GPS/EXIF when sharing.
 
 PRIVACY
-No ads, no unnecessary network access, fully open source. Source and APKs: https://github.com/t0ma5/Simple-Gallery
+No ads, no unnecessary network access, fully open source. Source and APKs: https://github.com/t0ma5/tomato-gallery
