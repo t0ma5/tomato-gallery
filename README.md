@@ -2,7 +2,7 @@
 
 <img alt="Logo" src="graphics/icon.png" width="120" />
 
-Fully open source gallery with no ads, tracking or unnecessary permissions. Tons of cool features and customizable colors, no internet access required and with privacy and simplicity in mind.
+Fully open source gallery with no ads, tracking or unnecessary permissions. Tons of cool features and customizable colors, no internet access required, build with privacy and simplicity in mind.
 
 [Simple-Gallery](https://github.com/SimpleMobileTools/Simple-Gallery) (GPL-3.0) was my favorite FOSS gallery app until the project was sold to a shady company named ZipoApps in 2023. I forked it to keep it alive, FOSS and updated. This fork is not affiliated with Simple Mobile Tools, Fossify, or ZipoApps. Code contributions are very welcome :)
 
