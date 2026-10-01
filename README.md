@@ -2,20 +2,9 @@
 
 <img alt="Logo" src="graphics/icon.png" width="120" />
 
-<div style="display:flex; gap:8px; flex-wrap:wrap;">
-<img alt="Albums" src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_en-US.jpeg" width="22%">
-<img alt="Editor" src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_en-US.jpeg" width="22%">
-<img alt="Viewer" src="fastlane/metadata/android/en-US/images/phoneScreenshots/4_en-US.jpeg" width="22%">
-<img alt="Lock" src="fastlane/metadata/android/en-US/images/phoneScreenshots/5_en-US.jpeg" width="22%">
-</div>
+Fully open source gallery with no ads, tracking or unnecessary permissions. Tons of cool features and customizable colors, no internet access required and with privacy and simplicity in mind.
 
-No ads or unnecessary permissions. It is fully open source and provides customizable colors. No internet access required; photos stay on the device. The Android launcher name is Gallery.
-
-## History
-
-[Simple-Gallery](https://github.com/SimpleMobileTools/Simple-Gallery) (GPL-3.0) was my favorite FOSS gallery app until the project was sold to a shady Israeli company named ZipoApps in 2023. I forked it to keep it alive, FOSS and updated. I will release new versions as long as I have time and energy. Code contributions on [GitHub](https://github.com/t0ma5/tomato-gallery) are very welcome :)
-
-This fork is not affiliated with Simple Mobile Tools, Fossify, or ZipoApps.
+[Simple-Gallery](https://github.com/SimpleMobileTools/Simple-Gallery) (GPL-3.0) was my favorite FOSS gallery app until the project was sold to a shady company named ZipoApps in 2023. I forked it to keep it alive, FOSS and updated. This fork is not affiliated with Simple Mobile Tools, Fossify, or ZipoApps. Code contributions are very welcome :)
 
 APKs are published on [GitHub Releases](https://github.com/t0ma5/tomato-gallery/releases)
 - `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk` (most phones)
@@ -25,10 +14,10 @@ APKs are published on [GitHub Releases](https://github.com/t0ma5/tomato-gallery/
 
 ## New features in this fork
 
-The Simple Gallery Pro workflow, plus a completely FOSS editor, OCR, AVIF/JXL, motion photos, 360° panoramas, and much more. Still offline, still FOSS and GPL-3.0
+The original Simple Gallery Pro workflow, plus a new completely FOSS editor, OCR, AVIF/JXL, motion photos, 360° panoramas, and much more. Still offline, still FOSS and GPL-3.0
 
 **Edit**
-- **Copy text OCR** — Viewer overflow reads printed text and numbers on a photo and copies them. On-device PaddleOCR (PP-OCRv5) engine and model files. Nothing is uploaded. This adds ~20MB extra to the apk file but it's a handy feature I wanted to have.
+- **Copy text (OCR)** — Viewer overflow reads printed text and numbers on a photo and copies them. On-device PaddleOCR (PP-OCRv5) engine and model files. Nothing is uploaded. This adds ~20MB extra to the apk file but it's a handy feature I wanted to have.
 - **FOSS photo editor** — Crop, rotate, resize, draw, filters, tone sliders, and text/emoji stickers. Tools stack in one session. Undo last tool (up to 3). No proprietary SDK.
 - **Editor stickers** — 6-column emoji grid (arrows, markers, faces) plus More for the system emoji picker.
 - **Lossless JPEG rotate** — Viewer rotate/save and editor rotate-only keep original quality and size. Save as no longer crashes on EXIF write.
@@ -90,3 +79,10 @@ Release APKs come from `assembleFossRelease` (local and GitHub Actions). Names:
 | Commons | `SimpleMobileTools/Simple-Commons` @ `9e60e2479`, patched by `python scripts/patch_commons.py` |
 
 Checkout Simple-Commons next to the app (gitignored `Simple-Commons/`), run `python scripts/patch_commons.py`, then `./gradlew assembleFossRelease`. When that directory exists, Gradle `includeBuild`s it instead of the JitPack AAR. Sign with gitignored `keystore.properties` and `app/keystore.jks` (GitHub secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`).
+
+<div style="display:flex; gap:8px; flex-wrap:wrap;">
+<img alt="Albums" src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_en-US.jpeg" width="22%">
+<img alt="Editor" src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_en-US.jpeg" width="22%">
+<img alt="Viewer" src="fastlane/metadata/android/en-US/images/phoneScreenshots/4_en-US.jpeg" width="22%">
+<img alt="Lock" src="fastlane/metadata/android/en-US/images/phoneScreenshots/5_en-US.jpeg" width="22%">
+</div>

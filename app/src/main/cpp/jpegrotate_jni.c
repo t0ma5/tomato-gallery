@@ -26,7 +26,7 @@ static void rot_error_exit(j_common_ptr cinfo)
 }
 
 JNIEXPORT jint JNICALL
-Java_tomato_simple_gallery_helpers_JpegTransform_rotateNative(
+Java_tomato_gallery_helpers_JpegTransform_rotateNative(
         JNIEnv *env, jclass clazz, jstring jsrc, jstring jdest, jint jdegrees)
 {
     const char *src = (*env)->GetStringUTFChars(env, jsrc, NULL);

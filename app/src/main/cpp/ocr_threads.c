@@ -8,7 +8,7 @@
  * numThreads == 0 keeps cv::parallel_for_ on the serial path.
  */
 JNIEXPORT void JNICALL
-Java_tomato_simple_gallery_helpers_PhotoOcr_disableOcrParallel(JNIEnv *env, jclass clazz) {
+Java_tomato_gallery_helpers_PhotoOcr_disableOcrParallel(JNIEnv *env, jclass clazz) {
     (void) env;
     (void) clazz;
 

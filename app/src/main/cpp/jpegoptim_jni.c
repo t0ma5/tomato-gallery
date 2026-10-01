@@ -32,7 +32,7 @@ extern int strip_none;
 static pthread_mutex_t jpegoptim_lock = PTHREAD_MUTEX_INITIALIZER;
 
 JNIEXPORT jlong JNICALL
-Java_tomato_simple_gallery_helpers_JpegOptim_optimizeNative(
+Java_tomato_gallery_helpers_JpegOptim_optimizeNative(
         JNIEnv *env, jclass clazz, jstring jpath, jstring jtmpdir, jint jquality)
 {
     const char *path = (*env)->GetStringUTFChars(env, jpath, NULL);

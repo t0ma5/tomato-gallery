@@ -1,8 +1,8 @@
 -keep class com.simplemobiletools.** { *; }
--keep class tomato.simple.gallery.** { *; }
+-keep class tomato.gallery.** { *; }
 -dontwarn android.graphics.Canvas
 -dontwarn com.simplemobiletools.**
--dontwarn tomato.simple.gallery.**
+-dontwarn tomato.gallery.**
 -dontwarn org.apache.**
 -keep class com.awxkee.** { *; }
 -dontwarn com.awxkee.**
