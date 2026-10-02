@@ -493,7 +493,7 @@ def main() -> None:
                 '    <string name="disclaimer">Disclaimer</string>\n',
                 '    <string name="disclaimer">Disclaimer</string>\n'
                 '    <string name="history">History</string>\n'
-                '    <string name="about_history_text">Tomato Gallery is a fork of Simple-Gallery (GPL-3.0) with new features and improvements. I will release new versions as long as I have time and energy.</string>\n',
+                '    <string name="about_history_text">Fully open source gallery with no ads, tracking or unnecessary permissions. Tons of cool features and customizable colors, no internet access required, made with privacy and simplicity in mind. Simple-Gallery (GPL-3.0) was my favorite FOSS gallery app until the project was sold to a shady company named ZipoApps in 2023. I forked it to keep it alive, FOSS and updated.</string>\n',
             ),
         ],
     )

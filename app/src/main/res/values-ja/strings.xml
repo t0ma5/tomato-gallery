@@ -442,7 +442,7 @@
     <string name="strip_metadata_on_share">共有時に GPS と EXIF を削除</string>
     <string name="discard_unsaved_edits">未保存の編集を破棄しますか？</string>
     <string name="history">沿革</string>
-    <string name="about_history_text">Tomato Gallery は Simple-Gallery（GPL-3.0）のフォークで、新しい機能と改善を加えています。時間と気力がある限り新しいバージョンを出します。</string>
+    <string name="about_history_text">広告、追跡、不要な権限のない完全オープンソースのギャラリーです。機能が多く、色をカスタマイズでき、インターネット不要で、プライバシーとシンプルさを重視しています。Simple-Gallery（GPL-3.0）は、2023年にプロジェクトが ZipoApps という疑わしい会社に売却されるまで、私の一番好きな FOSS ギャラリーでした。存続し、FOSS のまま更新し続けるためにフォークしました。</string>
     <string name="show_hidden">非表示を表示</string>
     <string name="show_excluded">除外を表示</string>
     <string name="show_favorites_only">お気に入りのみ表示</string>

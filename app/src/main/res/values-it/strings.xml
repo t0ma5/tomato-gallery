@@ -445,7 +445,7 @@
     <string name="strip_metadata_on_share">Rimuovi GPS ed EXIF in condivisione</string>
     <string name="discard_unsaved_edits">Annullare le modifiche non salvate?</string>
     <string name="history">Storia</string>
-    <string name="about_history_text">Tomato Gallery è un fork di Simple-Gallery (GPL-3.0) con nuove funzioni e miglioramenti. Pubblicherò nuove versioni finché avrò tempo ed energie.</string>
+    <string name="about_history_text">Galleria completamente open source, senza pubblicità, tracciamento o permessi inutili. Tante funzioni e colori personalizzabili, senza accesso a Internet, pensata per privacy e semplicità. Simple-Gallery (GPL-3.0) era la mia app galleria FOSS preferita finché il progetto non è stato venduto nel 2023 a un’azienda discutibile di nome ZipoApps. L’ho forkata per tenerla viva, FOSS e aggiornata.</string>
     <string name="show_hidden">Mostra nascosti</string>
     <string name="show_excluded">Mostra esclusi</string>
     <string name="show_favorites_only">Mostra solo i preferiti</string>

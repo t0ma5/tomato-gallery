@@ -446,7 +446,7 @@
     <string name="strip_metadata_on_share">Удалять GPS и EXIF при отправке</string>
     <string name="discard_unsaved_edits">Отменить несохранённые изменения?</string>
     <string name="history">История</string>
-    <string name="about_history_text">Tomato Gallery — форк Simple-Gallery (GPL-3.0) с новыми функциями и улучшениями. Я буду выпускать новые версии, пока хватает времени и сил.</string>
+    <string name="about_history_text">Полностью открытая галерея без рекламы, слежки и лишних разрешений. Много функций и настраиваемые цвета, интернет не нужен, с упором на приватность и простоту. Simple-Gallery (GPL-3.0) была моей любимой FOSS-галереей, пока проект в 2023 году не продали сомнительной компании ZipoApps. Я сделал форк, чтобы она оставалась живой, свободной и актуальной.</string>
     <string name="show_hidden">Показать скрытые</string>
     <string name="show_excluded">Показать исключённые</string>
     <string name="show_favorites_only">Показывать только избранное</string>

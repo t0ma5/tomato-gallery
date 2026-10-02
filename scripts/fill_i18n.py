@@ -68,7 +68,7 @@ TRANSLATIONS = {
         "apply_to_stacked_files": "Auf %d gestapelte Dateien anwenden?",
         "strip_metadata_on_share": "GPS und EXIF beim Teilen entfernen",
         "history": "Geschichte",
-        "about_history_text": "Simple-Gallery (GPL-3.0) war meine liebste FOSS-Galerie-App, bis das Projekt 2023 an das zwielichtige israelische Unternehmen ZipoApps verkauft wurde. Ich habe es abgespalten, um es lebendig, FOSS und aktuell zu halten. Ich werde neue Versionen veröffentlichen, solange ich Zeit und Energie habe. Code-Beiträge auf GitHub sind sehr willkommen :)",
+        "about_history_text": "Vollständig quelloffene Galerie ohne Werbung, Tracking oder unnötige Berechtigungen. Viele Funktionen und anpassbare Farben, kein Internetzugriff nötig, mit Blick auf Privatsphäre und Einfachheit. Simple-Gallery (GPL-3.0) war meine liebste FOSS-Galerie, bis das Projekt 2023 an ein zwielichtiges Unternehmen namens ZipoApps verkauft wurde. Ich habe sie abgespalten, damit sie lebendig, FOSS und aktuell bleibt.",
     },
 }
 
@@ -136,7 +136,7 @@ TRANSLATIONS["fr"] = {
     "apply_to_stacked_files": "Appliquer à %d fichiers empilés ?",
     "strip_metadata_on_share": "Retirer GPS et EXIF lors du partage",
     "history": "Historique",
-    "about_history_text": "Simple-Gallery (GPL-3.0) était mon appli galerie FOSS préférée jusqu’à la vente du projet en 2023 à une société israélienne douteuse nommée ZipoApps. Je l’ai dérivée pour la garder vivante, libre et à jour. Je publierai de nouvelles versions tant que j’aurai le temps et l’énergie. Les contributions au code sur GitHub sont les bienvenues :)",
+    "about_history_text": "Galerie entièrement open source, sans pub, pistage ni permissions inutiles. Beaucoup de fonctions et des couleurs personnalisables, sans accès Internet, pensée pour la vie privée et la simplicité. Simple-Gallery (GPL-3.0) était mon appli galerie FOSS préférée jusqu’à la vente du projet en 2023 à une société douteuse nommée ZipoApps. Je l’ai dérivée pour la garder vivante, libre et à jour.",
 }
 
 TRANSLATIONS["es"] = {
@@ -202,7 +202,7 @@ TRANSLATIONS["es"] = {
     "apply_to_stacked_files": "¿Aplicar a %d archivos agrupados?",
     "strip_metadata_on_share": "Quitar GPS y EXIF al compartir",
     "history": "Historia",
-    "about_history_text": "Simple-Gallery (GPL-3.0) era mi galería FOSS favorita hasta que el proyecto se vendió en 2023 a una empresa israelí turbia llamada ZipoApps. La bifurqué para mantenerla viva, FOSS y actualizada. Publicaré versiones nuevas mientras tenga tiempo y energía. Las contribuciones de código en GitHub son muy bienvenidas :)",
+    "about_history_text": "Galería totalmente de código abierto, sin anuncios, rastreo ni permisos innecesarios. Muchas funciones y colores personalizables, sin acceso a internet, hecha con la privacidad y la simplicidad en mente. Simple-Gallery (GPL-3.0) era mi galería FOSS favorita hasta que el proyecto se vendió en 2023 a una empresa turbia llamada ZipoApps. La bifurqué para mantenerla viva, libre y actualizada.",
 }
 
 TRANSLATIONS["ru"] = {
@@ -268,7 +268,7 @@ TRANSLATIONS["ru"] = {
     "apply_to_stacked_files": "Применить к %d файлам в стопке?",
     "strip_metadata_on_share": "Удалять GPS и EXIF при отправке",
     "history": "История",
-    "about_history_text": "Simple-Gallery (GPL-3.0) была моей любимой FOSS-галереей, пока проект в 2023 году не продали сомнительной израильской компании ZipoApps. Я сделал форк, чтобы она оставалась живой, свободной и актуальной. Я буду выпускать новые версии, пока хватает времени и сил. Вклады в код на GitHub очень приветствуются :)",
+    "about_history_text": "Полностью открытая галерея без рекламы, слежки и лишних разрешений. Много функций и настраиваемые цвета, интернет не нужен, с упором на приватность и простоту. Simple-Gallery (GPL-3.0) была моей любимой FOSS-галереей, пока проект в 2023 году не продали сомнительной компании ZipoApps. Я сделал форк, чтобы она оставалась живой, свободной и актуальной.",
 }
 
 TRANSLATIONS["it"] = {
@@ -298,7 +298,7 @@ TRANSLATIONS["it"] = {
     "stack_similar_files": "Raggruppa RAW+JPEG, raffiche e copie modificate",
     "strip_metadata_on_share": "Rimuovi GPS ed EXIF in condivisione",
     "history": "Storia",
-    "about_history_text": "Simple-Gallery (GPL-3.0) era la mia app galleria FOSS preferita finché il progetto non è stato venduto nel 2023 a una discutibile azienda israeliana di nome ZipoApps. L’ho forkata per tenerla viva, FOSS e aggiornata. Pubblicherò nuove versioni finché avrò tempo ed energie. I contributi al codice su GitHub sono i benvenuti :)",
+    "about_history_text": "Galleria completamente open source, senza pubblicità, tracciamento o permessi inutili. Tante funzioni e colori personalizzabili, senza accesso a Internet, pensata per privacy e semplicità. Simple-Gallery (GPL-3.0) era la mia app galleria FOSS preferita finché il progetto non è stato venduto nel 2023 a un’azienda discutibile di nome ZipoApps. L’ho forkata per tenerla viva, FOSS e aggiornata.",
 }
 
 TRANSLATIONS["pl"] = {
@@ -327,7 +327,7 @@ TRANSLATIONS["pl"] = {
     "stack_similar_files": "Grupuj RAW+JPEG, serie i kopie edytowane",
     "strip_metadata_on_share": "Usuwaj GPS i EXIF przy udostępnianiu",
     "history": "Historia",
-    "about_history_text": "Simple-Gallery (GPL-3.0) była moją ulubioną galerią FOSS, aż w 2023 r. projekt sprzedano podejrzanej izraelskiej firmie ZipoApps. Zrobiłem forka, żeby utrzymać ją przy życiu, jako FOSS i na bieżąco. Będę wydawać nowe wersje, dopóki starczy czasu i energii. Wkłady w kod na GitHubie są bardzo mile widziane :)",
+    "about_history_text": "W pełni otwarta galeria bez reklam, śledzenia i zbędnych uprawnień. Dużo funkcji i konfigurowalne kolory, bez dostępu do internetu, z myślą o prywatności i prostocie. Simple-Gallery (GPL-3.0) była moją ulubioną galerią FOSS, aż w 2023 r. projekt sprzedano podejrzanej firmie ZipoApps. Zrobiłem forka, żeby utrzymać ją przy życiu, jako FOSS i na bieżąco.",
 }
 
 TRANSLATIONS["zh-rCN"] = {
@@ -367,7 +367,7 @@ TRANSLATIONS["zh-rCN"] = {
     "stack_similar_files": "堆叠 RAW+JPEG、连拍和编辑副本",
     "strip_metadata_on_share": "分享时去除 GPS 和 EXIF",
     "history": "历史",
-    "about_history_text": "Simple-Gallery（GPL-3.0）曾是我最喜欢的 FOSS 图库应用，直到 2023 年该项目被卖给一家名为 ZipoApps 的可疑以色列公司。我分叉了它，好让它继续存活、保持开源并更新。只要我还有时间和精力，就会发布新版本。非常欢迎在 GitHub 上贡献代码 :)",
+    "about_history_text": "完全开源的图库，没有广告、追踪或不必要的权限。功能很多，颜色可自定义，不需要联网，注重隐私和简单。Simple-Gallery（GPL-3.0）曾是我最喜欢的 FOSS 图库，直到 2023 年该项目被卖给一家名为 ZipoApps 的可疑公司。我分叉了它，好让它继续存活、保持开源并更新。",
 }
 
 TRANSLATIONS["ja"] = {
@@ -403,7 +403,7 @@ TRANSLATIONS["ja"] = {
     "stack_similar_files": "RAW+JPEG、連写、編集コピーをスタック",
     "strip_metadata_on_share": "共有時に GPS と EXIF を削除",
     "history": "沿革",
-    "about_history_text": "Simple-Gallery（GPL-3.0）は、2023 年にプロジェクトが ZipoApps という疑わしいイスラエル企業に売却されるまで、私の一番好きな FOSS ギャラリーアプリでした。存続し、FOSS のまま更新し続けるためにフォークしました。時間と気力がある限り新しいバージョンを出します。GitHub でのコード貢献を歓迎します :)",
+    "about_history_text": "広告、追跡、不要な権限のない完全オープンソースのギャラリーです。機能が多く、色をカスタマイズでき、インターネット不要で、プライバシーとシンプルさを重視しています。Simple-Gallery（GPL-3.0）は、2023年にプロジェクトが ZipoApps という疑わしい会社に売却されるまで、私の一番好きな FOSS ギャラリーでした。存続し、FOSS のまま更新し続けるためにフォークしました。",
 }
 
 NEW_STRINGS = {
