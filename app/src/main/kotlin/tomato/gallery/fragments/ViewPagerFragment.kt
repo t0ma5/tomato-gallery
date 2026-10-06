@@ -17,12 +17,6 @@ import java.io.File
 abstract class ViewPagerFragment : Fragment() {
     var listener: FragmentListener? = null
 
-    private var mTouchDownTime = 0L
-    private var mTouchDownX = 0f
-    private var mTouchDownY = 0f
-    private var mCloseDownThreshold = 100f
-    private var mIgnoreCloseDown = false
-
     abstract fun fullscreenToggled(isFullscreen: Boolean)
 
     interface FragmentListener {
@@ -37,6 +31,8 @@ abstract class ViewPagerFragment : Fragment() {
         fun launchViewVideoIntent(path: String)
 
         fun isSlideShowActive(): Boolean
+
+        fun interruptSlideshowDrag()
     }
 
     fun getMediumExtendedDetails(medium: Medium): String {
@@ -148,26 +144,15 @@ abstract class ViewPagerFragment : Fragment() {
         return result.trimStart(',').trim()
     }
 
-    protected fun handleEvent(event: MotionEvent) {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                mTouchDownTime = System.currentTimeMillis()
-                mTouchDownX = event.rawX
-                mTouchDownY = event.rawY
+    protected fun handleEvent(event: MotionEvent): Boolean {
+        if (listener?.isSlideShowActive() == true) {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                listener?.interruptSlideshowDrag()
             }
-
-            MotionEvent.ACTION_POINTER_DOWN -> mIgnoreCloseDown = true
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                val diffX = mTouchDownX - event.rawX
-                val diffY = mTouchDownY - event.rawY
-
-                val downGestureDuration = System.currentTimeMillis() - mTouchDownTime
-                if (!mIgnoreCloseDown && (Math.abs(diffY) > Math.abs(diffX)) && (diffY < -mCloseDownThreshold) && downGestureDuration < MAX_CLOSE_DOWN_GESTURE_DURATION && context?.config?.allowDownGesture == true) {
-                    activity?.finish()
-                    activity?.overridePendingTransition(0, com.simplemobiletools.commons.R.anim.slide_down)
-                }
-                mIgnoreCloseDown = false
-            }
+            return false
         }
+        if (context?.config?.allowDownGesture != true) return false
+        val host = activity as? ViewerMotionHost ?: return false
+        return host.onViewerTouch(event)
     }
 }

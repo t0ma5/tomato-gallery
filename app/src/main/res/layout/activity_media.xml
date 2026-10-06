@@ -25,9 +25,10 @@
             android:paddingStart="@dimen/activity_margin"
             android:paddingTop="@dimen/activity_margin"
             android:paddingEnd="@dimen/activity_margin"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0"
             android:text="@string/no_media_with_filters"
             android:textSize="@dimen/bigger_text_size"
-            android:textStyle="italic"
             android:visibility="gone" />
 
         <com.simplemobiletools.commons.views.MyTextView

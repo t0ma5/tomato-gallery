@@ -15,7 +15,9 @@ import android.widget.TextView
 import com.simplemobiletools.commons.extensions.onGlobalLayout
 import tomato.gallery.R
 import tomato.gallery.extensions.audioManager
+import androidx.dynamicanimation.animation.DynamicAnimation
 import tomato.gallery.helpers.DRAG_THRESHOLD
+import tomato.gallery.helpers.FluidMotion
 
 // allow horizontal swipes through the layout, else it can cause glitches at zoomed in images
 class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(context, attrs) {
@@ -132,6 +134,9 @@ class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(co
                 if (mIsBrightnessScroll) {
                     mTouchDownValue = mTempBrightness
                 }
+                if (::slideInfoView.isInitialized) {
+                    FluidMotion.spring(slideInfoView, DynamicAnimation.TRANSLATION_Y, 0f, 1f, 0.25f)
+                }
             }
         }
         return true
@@ -169,6 +174,7 @@ class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(co
 
         val absolutePercent = ((newVolume / maxVolume.toFloat()) * 100).toInt()
         showValue(absolutePercent)
+        nudgeReadout(absolutePercent, percent)
 
         mSlideInfoFadeHandler.removeCallbacksAndMessages(null)
         mSlideInfoFadeHandler.postDelayed({
@@ -184,6 +190,7 @@ class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(co
 
         val absolutePercent = ((newBrightness / maxBrightness) * 100).toInt()
         showValue(absolutePercent)
+        nudgeReadout(absolutePercent, percent)
 
         val attributes = activity!!.window.attributes
         attributes.screenBrightness = absolutePercent / 100f
@@ -193,6 +200,22 @@ class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(co
         mSlideInfoFadeHandler.postDelayed({
             slideInfoView.animate().alpha(0f)
         }, SLIDE_INFO_FADE_DELAY)
+    }
+
+    private fun nudgeReadout(absolutePercent: Int, delta: Int) {
+        val over = when {
+            absolutePercent >= 100 && delta > 0 -> delta.toFloat()
+            absolutePercent <= 0 && delta < 0 -> -delta.toFloat()
+            else -> 0f
+        }
+        if (over == 0f) {
+            if (slideInfoView.translationY != 0f) {
+                FluidMotion.spring(slideInfoView, DynamicAnimation.TRANSLATION_Y, 0f, 1f, 0.2f)
+            }
+            return
+        }
+        val travel = FluidMotion.rubberband(over, mViewHeight.toFloat().coerceAtLeast(1f)) * 0.2f
+        slideInfoView.translationY = if (absolutePercent >= 100) -travel else travel
     }
 
     private fun showValue(percent: Int) {

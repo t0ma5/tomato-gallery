@@ -194,6 +194,11 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     override fun onStart() {
         super.onStart()
         mTempShowHiddenHandler.removeCallbacksAndMessages(null)
+        ViewerTransition.bindFolderLocator(this) { path ->
+            ViewerTransition.findThumb(binding.directoriesGrid, R.id.dir_thumbnail, path) { pos ->
+                getRecyclerAdapter()?.dirs?.getOrNull(pos)?.path
+            }?.let { ViewerTransition.rectOf(it) }
+        }
     }
 
     override fun onResume() {
@@ -283,6 +288,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     }
 
     override fun onDestroy() {
+        ViewerTransition.unbindFolderLocator(this)
         super.onDestroy()
         if (!isChangingConfigurations) {
             config.tempSkipDeleteConfirmation = false
@@ -872,6 +878,9 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     private fun itemClicked(path: String) {
         handleLockedFolderOpening(path) { success ->
             if (success) {
+                ViewerTransition.findThumb(binding.directoriesGrid, R.id.dir_thumbnail, path) { pos ->
+                    getRecyclerAdapter()?.dirs?.getOrNull(pos)?.path
+                }?.let { ViewerTransition.offer(it, path) }
                 Intent(this, MediaActivity::class.java).apply {
                     putInternalNonce()
                     putExtra(SKIP_AUTHENTICATION, true)

@@ -113,6 +113,7 @@ class MediaAdapter(
             }
         }
         bindViewHolder(holder)
+        FluidMotion.attachPress(holder.itemView)
     }
 
     override fun getItemCount() = media.size
@@ -792,6 +793,7 @@ class MediaAdapter(
                         if (add) com.simplemobiletools.commons.R.drawable.ic_star_vector
                         else com.simplemobiletools.commons.R.drawable.ic_star_outline_vector
                     )
+                    FluidMotion.confirmHaptic(favorite)
                     ensureBackgroundThread {
                         activity.updateFavorite(medium.path, add)
                         if (!add && (activity as? MediaActivity)?.mShowFavoritesOnly == true) {
@@ -844,6 +846,7 @@ class MediaAdapter(
             videoDuration?.beVisibleIf(showVideoDuration)
 
             mediumCheck.beVisibleIf(isSelected)
+            FluidMotion.markSelection(mediumCheck, isSelected)
             if (isSelected) {
                 mediumCheck.background?.applyColorFilter(properPrimaryColor)
                 mediumCheck.applyColorFilter(contrastColor)

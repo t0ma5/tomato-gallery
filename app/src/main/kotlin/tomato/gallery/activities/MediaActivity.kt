@@ -44,6 +44,8 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
     private val LAST_MEDIA_CHECK_PERIOD = 3000L
 
     private var mPath = ""
+    private var mExitBypass = false
+    private lateinit var folderMotion: ViewerMotion
     private var mIsGetImageIntent = false
     private var mIsGetVideoIntent = false
     private var mIsGetAnyIntent = false
@@ -114,11 +116,25 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         }
 
         updateWidgets()
+        folderMotion = ViewerMotion(
+            this,
+            binding.mediaHolder,
+            null,
+            { mPath },
+            { ViewerTransition.folderRect(it) },
+            allowOffscreenExit = false,
+        )
+        binding.mediaHolder.post { folderMotion.playEnter(ViewerTransition.takePending(mPath)) }
     }
 
     override fun onStart() {
         super.onStart()
         mTempShowHiddenHandler.removeCallbacksAndMessages(null)
+        ViewerTransition.bindPhotoLocator(this) { path ->
+            ViewerTransition.findThumb(binding.mediaGrid, R.id.medium_thumbnail, path) { pos ->
+                (getMediaAdapter()?.media?.getOrNull(pos) as? Medium)?.path
+            }?.let { ViewerTransition.rectOf(it) }
+        }
     }
 
     override fun onResume() {
@@ -223,6 +239,7 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
     }
 
     override fun onDestroy() {
+        ViewerTransition.unbindPhotoLocator(this)
         super.onDestroy()
         if (config.showAll && !isChangingConfigurations) {
             config.tempSkipDeleteConfirmation = false
@@ -232,6 +249,23 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         }
 
         mTempShowHiddenHandler.removeCallbacksAndMessages(null)
+    }
+
+    override fun finish() {
+        if (!mExitBypass && ::folderMotion.isInitialized && folderMotion.interceptFinish {
+                mExitBypass = true
+                finish()
+            }
+        ) {
+            return
+        }
+        if (::folderMotion.isInitialized && folderMotion.isExiting) {
+            mExitBypass = true
+        }
+        super.finish()
+        if (mExitBypass) {
+            overridePendingTransition(0, 0)
+        }
     }
 
     override fun onBackPressed() {
@@ -892,6 +926,9 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
             finish()
         } else {
             mWasFullscreenViewOpen = true
+            ViewerTransition.findThumb(binding.mediaGrid, R.id.medium_thumbnail, path) { pos ->
+                (getMediaAdapter()?.media?.getOrNull(pos) as? Medium)?.path
+            }?.let { ViewerTransition.offer(it, path) }
             val isVideo = path.isVideoFast()
             if (isVideo) {
                 when (config.videoPlayerType) {

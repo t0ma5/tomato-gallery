@@ -167,6 +167,7 @@ dependencies {
     implementation(libs.exif)
     implementation(libs.android.gif.drawable)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.dynamicanimation)
     implementation(libs.androidx.documentfile)
     implementation(libs.androidx.print)
     implementation(libs.androidx.emoji2.emojipicker)

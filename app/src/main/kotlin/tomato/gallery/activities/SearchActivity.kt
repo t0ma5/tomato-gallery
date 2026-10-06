@@ -17,6 +17,7 @@ import tomato.gallery.asynctasks.GetMediaAsynctask
 import tomato.gallery.databinding.ActivitySearchBinding
 import tomato.gallery.extensions.*
 import tomato.gallery.helpers.GridSpacingItemDecoration
+import tomato.gallery.helpers.ViewerTransition
 import tomato.gallery.helpers.MediaFetcher
 import tomato.gallery.helpers.PATH
 import tomato.gallery.helpers.SHOW_ALL
@@ -50,12 +51,22 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
         binding.searchFastscroller.updateColors(getProperPrimaryColor())
     }
 
+    override fun onStart() {
+        super.onStart()
+        ViewerTransition.bindPhotoLocator(this) { path ->
+            ViewerTransition.findThumb(binding.searchGrid, R.id.medium_thumbnail, path) { pos ->
+                (getMediaAdapter()?.media?.getOrNull(pos) as? Medium)?.path
+            }?.let { ViewerTransition.rectOf(it) }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         updateMenuColors()
     }
 
     override fun onDestroy() {
+        ViewerTransition.unbindPhotoLocator(this)
         super.onDestroy()
         mCurrAsyncTask?.stopFetching()
     }
@@ -166,6 +177,9 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
     }
 
     private fun itemClicked(path: String) {
+        ViewerTransition.findThumb(binding.searchGrid, R.id.medium_thumbnail, path) { pos ->
+            (getMediaAdapter()?.media?.getOrNull(pos) as? Medium)?.path
+        }?.let { ViewerTransition.offer(it, path) }
         val isVideo = path.isVideoFast()
         if (isVideo) {
             when (config.videoPlayerType) {

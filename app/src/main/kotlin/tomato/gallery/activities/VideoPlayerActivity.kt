@@ -50,9 +50,7 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
     private var mDragThreshold = 0f
     private var mTouchDownX = 0f
     private var mTouchDownY = 0f
-    private var mTouchDownTime = 0L
     private var mProgressAtDown = 0L
-    private var mCloseDownThreshold = 100f
 
     private var mUri: Uri? = null
     private var mExoPlayer: ExoPlayer? = null
@@ -68,7 +66,9 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
     private var mInitialX = 0f
     private var mInitialY = 0f
     private var mOriginalBrightness: Float? = null
+    private var mExitBypass = false
     private lateinit var mPlaybackSpeedPill: android.widget.TextView
+    private lateinit var viewerMotion: ViewerMotion
 
     private val binding by viewBinding(ActivityVideoPlayerBinding::inflate)
 
@@ -76,6 +76,18 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
         showTransparentTop = true
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
+        window.decorView.setBackgroundColor(Color.TRANSPARENT)
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        viewerMotion = ViewerMotion(
+            this,
+            binding.videoSurfaceFrame,
+            binding.viewerScrim,
+            { intent.getStringExtra(PATH) ?: "" },
+            { ViewerTransition.photoRect(it) },
+        )
+        binding.videoSurfaceFrame.post {
+            viewerMotion.playEnter(ViewerTransition.takePending(intent.getStringExtra(PATH) ?: ""))
+        }
         setupEdgeToEdge(padBottomSystem = listOf(binding.bottomVideoTimeHolder.root))
         setupOptionsMenu()
         setupOrientation()
@@ -90,9 +102,8 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
         binding.topShadow.layoutParams.height = statusBarHeight + actionBarHeight
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
-        if (config.blackBackground) {
-            binding.videoPlayerHolder.background = ColorDrawable(Color.BLACK)
-        }
+        binding.videoPlayerHolder.background = null
+        binding.viewerScrim.setBackgroundColor(if (config.blackBackground) Color.BLACK else getProperBackgroundColor())
 
         mOriginalBrightness = window.applyMaxBrightness(config.maxBrightness, mOriginalBrightness)
 
@@ -376,8 +387,14 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
     private fun handleDoubleTap(x: Float) {
         val instantWidth = mScreenWidth / 7
         when {
-            x <= instantWidth -> doSkip(false)
-            x >= mScreenWidth - instantWidth -> doSkip(true)
+            x <= instantWidth -> {
+                SkipHint.show(binding.videoSkipBack, binding.videoSkipForward, skipForward = false)
+                doSkip(false)
+            }
+            x >= mScreenWidth - instantWidth -> {
+                SkipHint.show(binding.videoSkipBack, binding.videoSkipForward, skipForward = true)
+                doSkip(true)
+            }
             else -> togglePlayPause()
         }
     }
@@ -583,21 +600,11 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
             showSystemUI(true)
         }
 
-        val newAlpha = if (isFullScreen) 0f else 1f
-        arrayOf(
-            binding.bottomVideoTimeHolder.videoPrevFile,
-            binding.bottomVideoTimeHolder.videoTogglePlayPause,
-            binding.bottomVideoTimeHolder.videoNextFile,
-            binding.bottomVideoTimeHolder.videoCurrTime,
-            binding.bottomVideoTimeHolder.videoSeekbar,
-            binding.bottomVideoTimeHolder.videoDuration,
-            binding.bottomVideoTimeHolder.videoPlaybackSpeed,
-            binding.bottomVideoTimeHolder.videoToggleMute,
-            binding.topShadow,
-            binding.videoBottomGradient
-        ).forEach {
-            it.animate().alpha(newAlpha).start()
-        }
+        val topTravel = statusBarHeight + binding.videoAppbar.height.toFloat()
+        ChromeMotion.slide(binding.topShadow, isFullScreen, upward = true, distance = topTravel)
+        ChromeMotion.slide(binding.videoAppbar, isFullScreen, upward = true, distance = topTravel)
+        ChromeMotion.slide(binding.bottomVideoTimeHolder.root, isFullScreen, upward = false)
+        ChromeMotion.slide(binding.videoBottomGradient, isFullScreen, upward = false)
         binding.bottomVideoTimeHolder.videoSeekbar.setOnSeekBarChangeListener(if (mIsFullscreen) null else this)
         arrayOf(
             binding.bottomVideoTimeHolder.videoPrevFile,
@@ -608,11 +615,6 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
             it.isClickable = !mIsFullscreen
         }
 
-        binding.videoAppbar.animate().alpha(newAlpha).withStartAction {
-            binding.videoAppbar.beVisible()
-        }.withEndAction {
-            binding.videoAppbar.beVisibleIf(newAlpha == 1f)
-        }.start()
     }
 
     private fun initTimeHolder() {
@@ -662,12 +664,35 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
         setPosition(limitedProgress)
     }
 
+    override fun finish() {
+        if (!mExitBypass && ::viewerMotion.isInitialized && viewerMotion.interceptFinish {
+                mExitBypass = true
+                finish()
+            }
+        ) {
+            return
+        }
+        if (::viewerMotion.isInitialized && viewerMotion.isExiting) {
+            mExitBypass = true
+        }
+        super.finish()
+        if (mExitBypass) {
+            overridePendingTransition(0, 0)
+        }
+    }
+
     private fun handleEvent(event: MotionEvent) {
+        val canDismiss = config.allowDownGesture &&
+            binding.videoSurfaceFrame.controller.state.zoom == 1f &&
+            !mIsDragged &&
+            ::viewerMotion.isInitialized
+        if (canDismiss && viewerMotion.onTouch(event)) {
+            return
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 mTouchDownX = event.rawX
                 mTouchDownY = event.rawY
-                mTouchDownTime = System.currentTimeMillis()
                 mProgressAtDown = mExoPlayer!!.currentPosition
             }
 
@@ -688,6 +713,7 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
                     }
                     mIgnoreCloseDown = true
                     mIsDragged = true
+                    if (::viewerMotion.isInitialized) viewerMotion.cancel()
                     var percent = ((diffX / mScreenWidth) * 100).toInt()
                     percent = Math.min(100, Math.max(-100, percent))
 
@@ -701,17 +727,6 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
             }
 
             MotionEvent.ACTION_UP -> {
-                val diffX = mTouchDownX - event.rawX
-                val diffY = mTouchDownY - event.rawY
-
-                val downGestureDuration = System.currentTimeMillis() - mTouchDownTime
-                if (config.allowDownGesture && !mIgnoreCloseDown && Math.abs(diffY) > Math.abs(diffX) && diffY < -mCloseDownThreshold &&
-                    downGestureDuration < MAX_CLOSE_DOWN_GESTURE_DURATION &&
-                    binding.videoSurfaceFrame.controller.state.zoom == 1f
-                ) {
-                    supportFinishAfterTransition()
-                }
-
                 mIgnoreCloseDown = false
                 if (mIsDragged) {
                     if (mIsFullscreen) {

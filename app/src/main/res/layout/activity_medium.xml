@@ -5,14 +5,25 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <View
+        android:id="@+id/viewer_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black" />
+
     <com.simplemobiletools.commons.views.MyViewPager
         android:id="@+id/view_pager"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <include
-        android:id="@+id/bottom_actions"
-        layout="@layout/bottom_actions" />
+    <View
+        android:id="@+id/viewer_sheet_dim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
 
     <ImageView
         android:id="@+id/top_shadow"
@@ -35,7 +46,22 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:menu="@menu/menu_viewpager"
-            app:navigationIcon="@drawable/ic_arrow_left_vector" />
+            app:navigationIcon="@drawable/ic_arrow_left_vector"
+            app:titleTextAppearance="@style/ViewerTitleText" />
 
     </com.google.android.material.appbar.AppBarLayout>
+
+    <include
+        android:id="@+id/bottom_actions"
+        layout="@layout/bottom_actions" />
+
+    <LinearLayout
+        android:id="@+id/viewer_more_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/bottom_actions"
+        android:background="@drawable/extended_details_background"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
 </RelativeLayout>

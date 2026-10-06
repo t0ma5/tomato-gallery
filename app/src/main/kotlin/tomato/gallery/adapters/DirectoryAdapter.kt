@@ -93,6 +93,7 @@ class DirectoryAdapter(
             setupView(itemView, dir, holder)
         }
         bindViewHolder(holder)
+        FluidMotion.attachPress(holder.itemView)
     }
 
     override fun getItemCount() = dirs.size
@@ -800,6 +801,7 @@ class DirectoryAdapter(
             }
 
             dirCheck.beVisibleIf(isSelected)
+            FluidMotion.markSelection(dirCheck, isSelected)
             if (isSelected) {
                 dirCheck.background?.applyColorFilter(properPrimaryColor)
                 dirCheck.applyColorFilter(contrastColor)

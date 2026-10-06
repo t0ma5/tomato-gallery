@@ -52,6 +52,11 @@ The original Simple Gallery Pro workflow, plus a new completely FOSS editor, OCR
 - **Locked folders** stay hidden in Favorites, Recycle Bin, and widgets until you unlock.
 - **Strip metadata** — Remove GPS or all EXIF from photos, or when sharing.
 
+**Motion**
+- **Fluid viewer** — Swipe down tracks the photo and springs closed or back. Open and back scale from the thumbnail. Viewer bars slide and keep the old gradient. Favorite, share, edit, and delete stay on the bar; the rest sit in a More sheet. Editor tools slide up from the icon that opened them. Grid tiles scale on press. Slideshow yields to a touch. Animator duration scale 0 uses fades only.
+- **Video end** — A video that plays to the end does not resume at the end next time. Double-tap skip shows a short chevron.
+- **Hide and unhide** — A second hide or unhide of the same file waits until the first rename finishes.
+
 **No nags**
 - No donation prompts.
 
@@ -66,7 +71,7 @@ Release APKs come from `assembleFossRelease` (local and GitHub Actions). Names:
 
 | Item | Value |
 | --- | --- |
-| App version | 1.0 (versionCode 100) |
+| App version | 1.1 (versionCode 101) |
 | minSdk | 26 |
 | targetSdk / compileSdk | 36 (Android 16) |
 | JVM bytecode | 17 |

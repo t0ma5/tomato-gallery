@@ -20,6 +20,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore.Images
 import android.view.MenuItem
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.RelativeLayout
@@ -63,7 +65,7 @@ import java.io.File
 import kotlin.math.min
 
 @Suppress("UNCHECKED_CAST")
-class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, ViewPagerFragment.FragmentListener {
+class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, ViewPagerFragment.FragmentListener, ViewerMotionHost {
     private var mPath = ""
     private var copyTextInProgress = false
     private var mDirectory = ""
@@ -72,6 +74,10 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private var mShowAll = false
     private var mIsSlideshowActive = false
     private var mPrevHashcode = 0
+    private var mExitBypass = false
+    private var mSlideshowAnimator: ValueAnimator? = null
+    private lateinit var viewerMotion: ViewerMotion
+    private lateinit var actionSheet: ActionSheetController
 
     private var mSlideshowHandler = Handler(Looper.getMainLooper())
     private var mSlideshowInterval = SLIDESHOW_DEFAULT_INTERVAL
@@ -108,7 +114,33 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         setupOptionsMenu()
         refreshMenuItems()
 
-        window.decorView.setBackgroundColor(getProperBackgroundColor())
+        window.decorView.setBackgroundColor(Color.TRANSPARENT)
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        binding.viewerScrim.setBackgroundColor(if (config.blackBackground) Color.BLACK else getProperBackgroundColor())
+        binding.bottomActions.bottomMore.setImageResource(com.simplemobiletools.commons.R.drawable.ic_three_dots_vector)
+        binding.bottomActions.bottomMore.setColorFilter(Color.WHITE)
+        binding.bottomActions.bottomMore.setOnLongClickListener { toast(R.string.more_actions); true }
+        viewerMotion = ViewerMotion(
+            this,
+            binding.viewPager,
+            binding.viewerScrim,
+            { getCurrentPath() },
+            { ViewerTransition.photoRect(it) },
+        )
+        actionSheet = ActionSheetController(binding.viewerMoreSheet, binding.viewerSheetDim, binding.bottomActions.bottomMore)
+        actionSheet.wire()
+        binding.viewPager.setOnTouchListener { _, event ->
+            if (mIsSlideshowActive && event.actionMasked == MotionEvent.ACTION_DOWN && binding.viewPager.isFakeDragging) {
+                mSlideshowAnimator?.cancel()
+                if (binding.viewPager.isFakeDragging) {
+                    try {
+                        binding.viewPager.endFakeDrag()
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            false
+        }
         binding.topShadow.layoutParams.height = statusBarHeight + actionBarHeight
         checkNotchSupport()
         (MediaActivity.mMedia.clone() as ArrayList<ThumbnailItem>).filterIsInstanceTo(mMediaFiles, Medium::class.java)
@@ -440,10 +472,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
         refreshViewPager(true)
         binding.viewPager.offscreenPageLimit = 2
-
-        if (config.blackBackground) {
-            binding.viewPager.background = ColorDrawable(Color.BLACK)
-        }
+        binding.viewPager.post { viewerMotion.playEnter(ViewerTransition.takePending(mPath)) }
 
         if (config.hideSystemUI) {
             binding.viewPager.onGlobalLayout {
@@ -561,6 +590,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private fun animatePagerTransition(forward: Boolean) {
         val oldPosition = binding.viewPager.currentItem
         val animator = ValueAnimator.ofInt(0, binding.viewPager.width)
+        mSlideshowAnimator = animator
         animator.addListener(object : Animator.AnimatorListener {
             override fun onAnimationEnd(animation: Animator) {
                 if (binding.viewPager.isFakeDragging) {
@@ -577,7 +607,12 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             }
 
             override fun onAnimationCancel(animation: Animator) {
-                binding.viewPager.endFakeDrag()
+                if (binding.viewPager.isFakeDragging) {
+                    try {
+                        binding.viewPager.endFakeDrag()
+                    } catch (_: Exception) {
+                    }
+                }
             }
 
             override fun onAnimationStart(animation: Animator) {}
@@ -725,7 +760,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             return
         }
         mIsTogglingVisibility = true
-        toggleFileVisibility(getCurrentPath(), hide) {
+        val started = toggleFileVisibility(getCurrentPath(), hide) {
             val newFileName = it.getFilenameFromPath()
             binding.mediumViewerToolbar.title = newFileName
 
@@ -738,6 +773,9 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             refreshMenuItems()
             mIsTogglingVisibility = false
             callback?.invoke()
+        }
+        if (!started) {
+            mIsTogglingVisibility = false
         }
     }
 
@@ -831,6 +869,16 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     }
 
     override fun finish() {
+        if (!mExitBypass && ::viewerMotion.isInitialized && viewerMotion.interceptFinish {
+                mExitBypass = true
+                finish()
+            }
+        ) {
+            return
+        }
+        if (::viewerMotion.isInitialized && viewerMotion.isExiting) {
+            mExitBypass = true
+        }
         val path = try {
             getCurrentPath()
         } catch (_: Exception) {
@@ -840,6 +888,14 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             setResult(Activity.RESULT_OK, Intent().putExtra(PATH, path))
         }
         super.finish()
+        if (mExitBypass) {
+            overridePendingTransition(0, 0)
+        }
+    }
+
+    override fun onViewerTouch(event: MotionEvent): Boolean {
+        if (mIsSlideshowActive) return false
+        return if (::viewerMotion.isInitialized) viewerMotion.onTouch(event) else false
     }
 
     private fun getCurrentPhotoFragment() = getCurrentFragment() as? PhotoFragment
@@ -999,6 +1055,27 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         binding.bottomActions.bottomResize.setOnClickListener {
             resizeImage()
         }
+        syncMoreSheet()
+    }
+
+    private fun syncMoreSheet() {
+        if (!::actionSheet.isInitialized) return
+        val secondary = listOf(
+            binding.bottomActions.bottomRotate,
+            binding.bottomActions.bottomProperties,
+            binding.bottomActions.bottomChangeOrientation,
+            binding.bottomActions.bottomSlideshow,
+            binding.bottomActions.bottomShowOnMap,
+            binding.bottomActions.bottomToggleFileVisibility,
+            binding.bottomActions.bottomRename,
+            binding.bottomActions.bottomSetAs,
+            binding.bottomActions.bottomCopy,
+            binding.bottomActions.bottomMove,
+            binding.bottomActions.bottomResize,
+        )
+        val shown = secondary.filter { it.visibility == View.VISIBLE }
+        secondary.forEach { it.beGone() }
+        actionSheet.bind(shown)
     }
 
     private fun updateBottomActionIcons(medium: Medium?) {
@@ -1016,6 +1093,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
         binding.bottomActions.bottomRotate.beVisibleIf(config.visibleBottomActions and BOTTOM_ACTION_ROTATE != 0 && getCurrentMedium()?.isImage() == true)
         binding.bottomActions.bottomChangeOrientation.setImageResource(getChangeOrientationIcon())
+        syncMoreSheet()
     }
 
     private fun toggleFavorite() {
@@ -1030,7 +1108,10 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             }
 
             runOnUiThread {
-                updateBottomActionIcons(medium)
+                binding.bottomActions.bottomFavorite.let { star ->
+                    FluidMotion.confirmHaptic(star)
+                    updateBottomActionIcons(medium)
+                }
                 refreshMenuItems()
             }
         }
@@ -1550,6 +1631,17 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
     override fun isSlideShowActive() = mIsSlideshowActive
 
+    override fun interruptSlideshowDrag() {
+        if (!binding.viewPager.isFakeDragging) return
+        mSlideshowAnimator?.cancel()
+        if (binding.viewPager.isFakeDragging) {
+            try {
+                binding.viewPager.endFakeDrag()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     override fun goToPrevItem() {
         binding.viewPager.setCurrentItem(binding.viewPager.currentItem - 1, false)
         checkOrientation()
@@ -1599,19 +1691,13 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private fun fullscreenToggled() {
         binding.viewPager.adapter?.let {
             (it as MyPagerAdapter).toggleFullscreen(mIsFullScreen)
-            val newAlpha = if (mIsFullScreen) 0f else 1f
-            binding.topShadow.animate().alpha(newAlpha).start()
-            binding.bottomActions.root.animate().alpha(newAlpha).withStartAction {
-                binding.bottomActions.root.beVisible()
-            }.withEndAction {
-                binding.bottomActions.root.beVisibleIf(newAlpha == 1f)
-            }.start()
-
-            binding.mediumViewerAppbar.animate().alpha(newAlpha).withStartAction {
-                binding.mediumViewerAppbar.beVisible()
-            }.withEndAction {
-                binding.mediumViewerAppbar.beVisibleIf(newAlpha == 1f)
-            }.start()
+            if (::actionSheet.isInitialized) actionSheet.closeIfOpen()
+            val topTravel = statusBarHeight + binding.mediumViewerAppbar.height.toFloat()
+            ChromeMotion.slide(binding.topShadow, mIsFullScreen, upward = true, distance = topTravel)
+            ChromeMotion.slide(binding.mediumViewerAppbar, mIsFullScreen, upward = true, distance = topTravel)
+            if (binding.bottomActions.root.isVisible()) {
+                ChromeMotion.slide(binding.bottomActions.root, mIsFullScreen, upward = false)
+            }
         }
     }
 

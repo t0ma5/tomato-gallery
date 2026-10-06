@@ -38,6 +38,7 @@ import com.simplemobiletools.commons.dialogs.SecurityDialog
 import com.simplemobiletools.commons.extensions.*
 import com.simplemobiletools.commons.helpers.*
 import com.simplemobiletools.commons.models.FAQItem
+import tomato.gallery.helpers.PATH
 import com.simplemobiletools.commons.models.FileDirItem
 import tomato.gallery.BuildConfig
 import tomato.gallery.R
@@ -200,6 +201,7 @@ fun Activity.launchGesturePlayer(path: String, extras: HashMap<String, Boolean> 
         runOnUiThread {
             Intent(applicationContext, tomato.gallery.activities.VideoPlayerActivity::class.java).apply {
                 setDataAndType(newUri, mimeType)
+                putExtra(PATH, path)
                 for ((key, value) in extras) putExtra(key, value)
                 startActivity(this)
             }
@@ -451,12 +453,25 @@ fun BaseSimpleActivity.removeNoMedia(path: String, callback: (() -> Unit)? = nul
     }
 }
 
-fun BaseSimpleActivity.toggleFileVisibility(oldPath: String, hide: Boolean, callback: ((newPath: String) -> Unit)? = null) {
+private val visibilityTogglePaths = mutableSetOf<String>()
+
+fun BaseSimpleActivity.toggleFileVisibility(oldPath: String, hide: Boolean, callback: ((newPath: String) -> Unit)? = null): Boolean {
+    synchronized(visibilityTogglePaths) {
+        if (!visibilityTogglePaths.add(oldPath)) {
+            return false
+        }
+    }
+    val release = {
+        synchronized(visibilityTogglePaths) {
+            visibilityTogglePaths.remove(oldPath)
+        }
+    }
     val path = oldPath.getParentPath()
     var filename = oldPath.getFilenameFromPath()
     if ((hide && filename.startsWith('.')) || (!hide && !filename.startsWith('.'))) {
+        release()
         callback?.invoke(oldPath)
-        return
+        return true
     }
 
     filename = if (hide) {
@@ -468,6 +483,7 @@ fun BaseSimpleActivity.toggleFileVisibility(oldPath: String, hide: Boolean, call
     val newPath = "$path/$filename"
     renameFile(oldPath, newPath, false) { success, useAndroid30Way ->
         runOnUiThread {
+            release()
             callback?.invoke(newPath)
         }
 
@@ -475,6 +491,7 @@ fun BaseSimpleActivity.toggleFileVisibility(oldPath: String, hide: Boolean, call
             updateDBMediaPath(oldPath, newPath)
         }
     }
+    return true
 }
 
 fun BaseSimpleActivity.tryCopyMoveFilesTo(fileDirItems: ArrayList<FileDirItem>, isCopyOperation: Boolean, callback: (destinationPath: String) -> Unit) {

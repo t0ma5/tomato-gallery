@@ -3,11 +3,12 @@ package tomato.gallery.activities
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.text.Html
+import android.view.MotionEvent
+import android.view.View
 import android.widget.RelativeLayout
 import com.simplemobiletools.commons.dialogs.PropertiesDialog
 import com.simplemobiletools.commons.extensions.*
@@ -23,7 +24,7 @@ import tomato.gallery.helpers.*
 import tomato.gallery.models.Medium
 import java.io.File
 
-open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentListener {
+open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentListener, ViewerMotionHost {
     private var mMedium: Medium? = null
     private var mIsFullScreen = false
     private var mIsFromGallery = false
@@ -33,6 +34,10 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
 
     var mIsVideo = false
 
+    private var mExitBypass = false
+    private lateinit var viewerMotion: ViewerMotion
+    private lateinit var actionSheet: ActionSheetController
+
     private val binding by viewBinding(FragmentHolderBinding::inflate)
 
     public override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +45,18 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
 
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
+        binding.viewerScrim.setBackgroundColor(if (config.blackBackground) Color.BLACK else getProperBackgroundColor())
+        binding.bottomActions.bottomMore.setImageResource(com.simplemobiletools.commons.R.drawable.ic_three_dots_vector)
+        binding.bottomActions.bottomMore.setColorFilter(Color.WHITE)
+        viewerMotion = ViewerMotion(
+            this,
+            binding.fragmentPlaceholder,
+            binding.viewerScrim,
+            { mMedium?.path ?: "" },
+            { ViewerTransition.photoRect(it) },
+        )
+        actionSheet = ActionSheetController(binding.viewerMoreSheet, binding.viewerSheetDim, binding.bottomActions.bottomMore)
+        actionSheet.wire()
         setupEdgeToEdge(padBottomSystem = listOf(binding.bottomActions.bottomActionsWrapper))
         setupOptionsMenu()
         refreshMenuItems()
@@ -231,8 +248,8 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
             supportFragmentManager.beginTransaction().replace(R.id.fragment_placeholder, mFragment!!).commit()
         }
 
-        if (config.blackBackground) {
-            binding.fragmentHolder.background = ColorDrawable(Color.BLACK)
+        binding.fragmentPlaceholder.post {
+            viewerMotion.playEnter(ViewerTransition.takePending(mMedium?.path ?: ""))
         }
 
         mOriginalBrightness = window.applyMaxBrightness(config.maxBrightness, mOriginalBrightness)
@@ -356,14 +373,14 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
         val visibleBottomActions = if (config.bottomActions) config.visibleBottomActions else 0
         binding.bottomActions.bottomEdit.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_EDIT != 0 && mMedium?.isImage() == true)
         binding.bottomActions.bottomEdit.setOnClickListener {
-            if (mUri != null && binding.bottomActions.root.alpha == 1f) {
+            if (mUri != null && binding.bottomActions.root.translationY == 0f) {
                 openEditor(mUri!!.toString())
             }
         }
 
         binding.bottomActions.bottomShare.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_SHARE != 0)
         binding.bottomActions.bottomShare.setOnClickListener {
-            if (mUri != null && binding.bottomActions.root.alpha == 1f) {
+            if (mUri != null && binding.bottomActions.root.translationY == 0f) {
                 sharePath(mUri!!.toString())
             }
         }
@@ -377,6 +394,10 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
         binding.bottomActions.bottomShowOnMap.setOnClickListener {
             showFileOnMap(mUri!!.toString())
         }
+        val secondary = listOf(binding.bottomActions.bottomSetAs, binding.bottomActions.bottomShowOnMap)
+        val shown = secondary.filter { it.visibility == View.VISIBLE }
+        secondary.forEach { it.beGone() }
+        actionSheet.bind(shown)
     }
 
     override fun fragmentClicked() {
@@ -387,17 +408,34 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
             showSystemUI(true)
         }
 
-        val newAlpha = if (mIsFullScreen) 0f else 1f
-        binding.topShadow.animate().alpha(newAlpha).start()
-        if (!binding.bottomActions.root.isGone()) {
-            binding.bottomActions.root.animate().alpha(newAlpha).start()
+        actionSheet.closeIfOpen()
+        val topTravel = statusBarHeight + binding.fragmentViewerAppbar.height.toFloat()
+        ChromeMotion.slide(binding.topShadow, mIsFullScreen, upward = true, distance = topTravel)
+        ChromeMotion.slide(binding.fragmentViewerAppbar, mIsFullScreen, upward = true, distance = topTravel)
+        if (binding.bottomActions.root.isVisible()) {
+            ChromeMotion.slide(binding.bottomActions.root, mIsFullScreen, upward = false)
         }
+    }
 
-        binding.fragmentViewerToolbar.animate().alpha(newAlpha).withStartAction {
-            binding.fragmentViewerToolbar.beVisible()
-        }.withEndAction {
-            binding.fragmentViewerToolbar.beVisibleIf(newAlpha == 1f)
-        }.start()
+    override fun finish() {
+        if (!mExitBypass && ::viewerMotion.isInitialized && viewerMotion.interceptFinish {
+                mExitBypass = true
+                finish()
+            }
+        ) {
+            return
+        }
+        if (::viewerMotion.isInitialized && viewerMotion.isExiting) {
+            mExitBypass = true
+        }
+        super.finish()
+        if (mExitBypass) {
+            overridePendingTransition(0, 0)
+        }
+    }
+
+    override fun onViewerTouch(event: MotionEvent): Boolean {
+        return if (::viewerMotion.isInitialized) viewerMotion.onTouch(event) else false
     }
 
     override fun videoEnded() = false
@@ -409,4 +447,6 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
     override fun launchViewVideoIntent(path: String) {}
 
     override fun isSlideShowActive() = false
+
+    override fun interruptSlideshowDrag() {}
 }

@@ -179,14 +179,13 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
                 }
             })
 
-            videoPreview.setOnTouchListener { view, event ->
+            videoPreview.setOnTouchListener { _, event ->
                 handleEvent(event)
-                false
             }
 
-            videoSurfaceFrame.setOnTouchListener { view, event ->
-                if (videoSurfaceFrame.controller.state.zoom == 1f) {
-                    handleEvent(event)
+            videoSurfaceFrame.setOnTouchListener { _, event ->
+                if (videoSurfaceFrame.controller.state.zoom == 1f && handleEvent(event)) {
+                    return@setOnTouchListener true
                 }
                 handleTouchHoldEvent(event)
                 if (mIsLongPressActive) {
@@ -505,8 +504,14 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
         val viewWidth = mView.width
         val instantWidth = viewWidth / 7
         when {
-            x <= instantWidth -> doSkip(false)
-            x >= viewWidth - instantWidth -> doSkip(true)
+            x <= instantWidth -> {
+                SkipHint.show(binding.videoSkipBack, binding.videoSkipForward, skipForward = false)
+                doSkip(false)
+            }
+            x >= viewWidth - instantWidth -> {
+                SkipHint.show(binding.videoSkipBack, binding.videoSkipForward, skipForward = true)
+                doSkip(true)
+            }
             else -> togglePlayPause()
         }
     }
@@ -586,7 +591,7 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
             it.isClickable = !mIsFullscreen
         }
 
-        mTimeHolder.animate().alpha(newAlpha).start()
+        ChromeMotion.slide(mTimeHolder, isFullscreen, upward = false)
         binding.videoDetails.apply {
             if (mStoredShowExtendedDetails && isVisible() && context != null && resources != null) {
                 animate().y(getExtendedDetailsY(height))
@@ -811,6 +816,7 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
             return
         }
 
+        mConfig.removeLastVideoPosition(mMedium.path)
         mCurrTime = (mExoPlayer!!.duration / 1000).toInt()
         if (listener?.videoEnded() == false && mConfig.loopVideos) {
             playVideo()
@@ -818,9 +824,6 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
             mSeekBar.progress = mSeekBar.max
             mCurrTimeView.text = mDuration.getFormattedDuration()
             pauseVideo()
-            if (mConfig.rememberLastVideoPosition) {
-                mConfig.removeLastVideoPosition(mMedium.path)
-            }
         }
     }
 

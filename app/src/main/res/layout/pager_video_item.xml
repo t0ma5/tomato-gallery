@@ -106,4 +106,32 @@
         android:textColor="@android:color/white"
         android:textSize="@dimen/extra_big_text_size" />
 
+    <TextView
+        android:id="@+id/video_skip_back"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="28dp"
+        android:alpha="0"
+        android:clickable="false"
+        android:text="‹‹"
+        android:textColor="@android:color/white"
+        android:textSize="42sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/video_skip_forward"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:layout_marginEnd="28dp"
+        android:alpha="0"
+        android:clickable="false"
+        android:text="››"
+        android:textColor="@android:color/white"
+        android:textSize="42sp"
+        android:textStyle="bold" />
+
 </RelativeLayout>

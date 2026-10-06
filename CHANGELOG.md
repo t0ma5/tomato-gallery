@@ -1,6 +1,13 @@
 Changelog
 ==========
 
+Version 1.1 *(2026-10-06)*
+----------------------------
+
+ * Fluid viewer: swipe down tracks the photo and springs closed or back. Open and back scale from the thumbnail. Bars slide and keep the old gradient. Favorite, share, edit, and delete stay on the bar; the rest sit in a More sheet. Editor tools slide up from their icon. Grid tiles scale on press. Slideshow yields to a touch. Animator duration scale 0 uses fades only
+ * A video that plays to the end clears its saved resume point. Double-tap skip shows a short chevron. Brightness and volume readouts ease at 0% and 100%
+ * A second hide or unhide of the same file waits until the first rename finishes
+
 Version 1.0 *(2026-10-01)*
 ----------------------------
 

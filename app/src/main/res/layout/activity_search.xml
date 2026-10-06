@@ -26,8 +26,9 @@
             android:paddingTop="@dimen/activity_margin"
             android:paddingEnd="@dimen/activity_margin"
             android:text="@string/no_media_with_filters"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0"
             android:textSize="@dimen/bigger_text_size"
-            android:textStyle="italic"
             android:visibility="gone" />
 
         <com.qtalk.recyclerviewfastscroller.RecyclerViewFastScroller

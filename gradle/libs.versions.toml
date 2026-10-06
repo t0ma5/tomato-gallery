@@ -5,6 +5,7 @@ kotlin = "2.2.10"
 ksp = "2.2.10-2.0.2"
 #AndroidX
 androidx-swiperefreshlayout = "1.1.0"
+androidx-dynamicanimation = "1.1.0"
 androidx-constraintlayout = "2.2.1"
 androidx-documentfile = "1.1.0"
 androidx-print = "1.1.0"
@@ -41,14 +42,15 @@ app-build-javaVersion = "VERSION_17"
 app-build-kotlinJVMTarget = "17"
 #versioning
 app-version-appId = "tomato.gallery"
-app-version-versionCode = "100"
-app-version-versionName = "1.0"
+app-version-versionCode = "101"
+app-version-versionName = "1.1"
 subsamplingScaleImageView = "80efdaa570"
 [libraries]
 #AndroidX
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3Exoplayer" }
 androidx-media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "media3Exoplayer" }
 androidx-swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "androidx-swiperefreshlayout" }
+androidx-dynamicanimation = { module = "androidx.dynamicanimation:dynamicanimation", version.ref = "androidx-dynamicanimation" }
 androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidx-constraintlayout" }
 androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "androidx-documentfile" }
 androidx-print = { module = "androidx.print:print", version.ref = "androidx-print" }

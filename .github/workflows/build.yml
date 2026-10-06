@@ -157,8 +157,16 @@ jobs:
             `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk` for most phones; `...-armeabi-v7a.apk` for 32-bit ARM; `...-x86_64.apk` for 64-bit emulators; `...-FOSS-universal.apk` has all three ABIs.
             They can sit next to Play Store Simple Gallery Pro. The app name is Tomato Gallery. Launcher name is Gallery.
 
-            Version 1.0 (versionCode 100) replaces the 6.x line. It does not update installs of tomato.simple.gallery. Those stay as a separate app until you uninstall them.
-            Notes below roll up every earlier GitHub release. The 6.31.2 note is omitted on purpose.
+            Version 1.1 (versionCode 101). It does not update installs of tomato.simple.gallery. Those stay as a separate app until you uninstall them.
+            Version 1.0 replaced the 6.x line. Notes below roll up every earlier GitHub release. The 6.31.2 note is omitted on purpose.
+
+            ## New in 1.1
+
+            ### Motion
+
+            1. **Fluid viewer** — Swipe down tracks the photo and springs closed or back. Open and back scale from the thumbnail. Toolbar and bottom bar slide on the same path and keep the old gradient. Favorite, share, edit, and delete stay on the bar; the rest sit in a More sheet. Editor tools slide up from the icon that opened them. Grid tiles scale on press. A touch during the slideshow takes the pager. Animator duration scale 0 uses fades only.
+            2. **Video end** — Playback that reaches the end clears the saved resume point, so the next open starts at the beginning. Double-tap skip shows a short chevron on the tapped side. Brightness and volume readouts ease at 0% and 100%.
+            3. **Hide and unhide** — A second hide or unhide of the same file waits until the first rename finishes.
 
             ## New in 1.0
 

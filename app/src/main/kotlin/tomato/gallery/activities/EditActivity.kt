@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.provider.MediaStore
 import android.view.View
+import androidx.dynamicanimation.animation.DynamicAnimation
 import android.widget.ImageView
 import android.widget.RelativeLayout
 import androidx.exifinterface.media.ExifInterface
@@ -1118,6 +1119,54 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         binding.bottomEditorDrawActions.bottomDrawColor.scaleY = scale
     }
 
+    private fun syncEditorPanel(panel: View, show: Boolean, anchor: View) {
+        if (!show) {
+            if (!panel.isVisible()) return
+            if (FluidMotion.isReducedMotion(this)) {
+                panel.beGone()
+                panel.translationY = 0f
+                return
+            }
+            val travel = panel.height.toFloat().coerceAtLeast(1f)
+            val anim = FluidMotion.spring(panel, DynamicAnimation.TRANSLATION_Y, travel, 1f, 0.3f)
+            if (anim == null) {
+                panel.beGone()
+                return
+            }
+            lateinit var listener: DynamicAnimation.OnAnimationEndListener
+            listener = DynamicAnimation.OnAnimationEndListener { animation, canceled, _, _ ->
+                animation.removeEndListener(listener)
+                if (!canceled && panel.translationY >= travel * 0.8f) panel.beGone()
+            }
+            anim.addEndListener(listener)
+            return
+        }
+        if (panel.isVisible() && panel.translationY == 0f && panel.scaleX == 1f) return
+        panel.beVisible()
+        panel.post {
+            if (!panel.isVisible()) return@post
+            if (FluidMotion.isReducedMotion(this)) {
+                panel.translationY = 0f
+                panel.scaleX = 1f
+                panel.scaleY = 1f
+                return@post
+            }
+            val travel = panel.height.toFloat().coerceAtLeast(1f)
+            panel.pivotY = panel.height.toFloat()
+            val anchorLoc = IntArray(2)
+            val panelLoc = IntArray(2)
+            anchor.getLocationOnScreen(anchorLoc)
+            panel.getLocationOnScreen(panelLoc)
+            panel.pivotX = (anchorLoc[0] + anchor.width / 2f - panelLoc[0]).coerceIn(0f, panel.width.toFloat())
+            panel.translationY = travel
+            panel.scaleX = 0.96f
+            panel.scaleY = 0.96f
+            FluidMotion.spring(panel, DynamicAnimation.TRANSLATION_Y, 0f, 1f, 0.35f)
+            FluidMotion.spring(panel, DynamicAnimation.SCALE_X, 1f, 1f, 0.35f)
+            FluidMotion.spring(panel, DynamicAnimation.SCALE_Y, 1f, 1f, 0.35f)
+        }
+    }
+
     private fun updatePrimaryActionButtons() {
         if (binding.cropImageView.isGone() && currPrimaryAction == PRIMARY_ACTION_CROP_ROTATE) {
             loadCropImageView()
@@ -1151,11 +1200,11 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         }
 
         currentPrimaryActionButton?.applyColorFilter(getProperPrimaryColor())
-        binding.bottomEditorFilterActions.root.beVisibleIf(currPrimaryAction == PRIMARY_ACTION_FILTER)
-        binding.bottomEditorCropRotateActions.root.beVisibleIf(currPrimaryAction == PRIMARY_ACTION_CROP_ROTATE)
-        binding.bottomEditorDrawActions.root.beVisibleIf(currPrimaryAction == PRIMARY_ACTION_DRAW)
-        binding.bottomEditorAdjustActions.root.beVisibleIf(currPrimaryAction == PRIMARY_ACTION_ADJUST)
-        binding.bottomEditorTextActions.root.beVisibleIf(currPrimaryAction == PRIMARY_ACTION_TEXT)
+        syncEditorPanel(binding.bottomEditorFilterActions.root, currPrimaryAction == PRIMARY_ACTION_FILTER, binding.bottomEditorPrimaryActions.bottomPrimaryFilter)
+        syncEditorPanel(binding.bottomEditorCropRotateActions.root, currPrimaryAction == PRIMARY_ACTION_CROP_ROTATE, binding.bottomEditorPrimaryActions.bottomPrimaryCropRotate)
+        syncEditorPanel(binding.bottomEditorDrawActions.root, currPrimaryAction == PRIMARY_ACTION_DRAW, binding.bottomEditorPrimaryActions.bottomPrimaryDraw)
+        syncEditorPanel(binding.bottomEditorAdjustActions.root, currPrimaryAction == PRIMARY_ACTION_ADJUST, binding.bottomEditorPrimaryActions.bottomPrimaryAdjust)
+        syncEditorPanel(binding.bottomEditorTextActions.root, currPrimaryAction == PRIMARY_ACTION_TEXT, binding.bottomEditorPrimaryActions.bottomPrimaryText)
 
         if (currPrimaryAction == PRIMARY_ACTION_FILTER && binding.bottomEditorFilterActions.bottomActionsFilterList.adapter == null) {
             ensureBackgroundThread {

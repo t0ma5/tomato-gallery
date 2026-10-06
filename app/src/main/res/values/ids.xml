@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="view_base_padding" type="id" />
+    <item name="press_feedback" type="id" />
+    <item name="motion_selected" type="id" />
 </resources>
