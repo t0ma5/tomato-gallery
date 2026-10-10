@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.simplemobiletools.commons.compose.extensions.showFakeVersionWarning
 import com.simplemobiletools.commons.dialogs.*
 import com.simplemobiletools.commons.extensions.*
 import com.simplemobiletools.commons.helpers.*
@@ -58,6 +59,7 @@ class SettingsActivity : SimpleActivity() {
         ensureAppUnlocked {
             setupToolbar(binding.settingsToolbar, NavigationIcon.Arrow)
             setupSettingItems()
+            showFakeVersionWarning()
         }
     }
 

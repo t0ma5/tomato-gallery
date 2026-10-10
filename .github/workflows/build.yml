@@ -167,6 +167,8 @@ jobs:
             1. **Fluid viewer** — Swipe down tracks the photo and springs closed or back. Open and back scale from the thumbnail. Toolbar and bottom bar slide on the same path and keep the old gradient. Favorite, share, edit, and delete stay on the bar; the rest sit in a More sheet. Editor tools slide up from the icon that opened them. Grid tiles scale on press. A touch during the slideshow takes the pager. Animator duration scale 0 uses fades only.
             2. **Video end** — Playback that reaches the end clears the saved resume point, so the next open starts at the beginning. Double-tap skip shows a short chevron on the tapped side. Brightness and volume readouts ease at 0% and 100%.
             3. **Hide and unhide** — A second hide or unhide of the same file waits until the first rename finishes.
+            4. **What's new** — The dialog stays closed on a normal launch. Older notes used ids above this version, so they matched every time.
+            5. **Unofficial package** — About no longer shows the warning. Settings shows it after 50 starts, and only when the package is not tomato.gallery. OK opens https://github.com/t0ma5/tomato-gallery/
 
             ## New in 1.0
 

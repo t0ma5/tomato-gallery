@@ -1,3 +1,5 @@
 • Fluid viewer: swipe down tracks the photo, open and back scale from the thumbnail, bars keep the old gradient, four actions plus a More sheet
 • A video that plays to the end starts at the beginning next time. Double-tap skip shows a chevron
 • A second hide or unhide of the same file waits until the first rename finishes
+• What's new stays closed on a normal launch
+• About no longer warns about an unofficial package. Settings does, after 50 starts, when the package is not tomato.gallery

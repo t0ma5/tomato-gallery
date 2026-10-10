@@ -148,6 +148,121 @@ def scrub_simplemobiletools_com() -> None:
     print(f"scrubbed {count} Commons files")
 
 
+def patch_fake_version_warning() -> None:
+    """About stays quiet. Settings warns after 50 starts when the package is not tomato.gallery."""
+    patch(
+        "commons/src/main/kotlin/com/simplemobiletools/commons/compose/extensions/AcitivtyExtensions.kt",
+        [
+            (
+                "import android.content.ComponentName\n",
+                "import android.app.Activity\nimport android.content.ComponentName\n",
+            ),
+            (
+                "import com.simplemobiletools.commons.R\nimport com.simplemobiletools.commons.extensions.*\n",
+                "import com.simplemobiletools.commons.R\n"
+                "import com.simplemobiletools.commons.dialogs.ConfirmationDialog\n"
+                "import com.simplemobiletools.commons.extensions.*\n",
+            ),
+            (
+                'const val DEVELOPER_PLAY_STORE_URL = "https://play.google.com/store/apps/dev?id=9070296388022589266"\n'
+                "const val FAKE_VERSION_APP_LABEL =\n"
+                '    "You are using a fake version of the app. For your own safety download the original one from www.simplemobiletools.com. Thanks"\n'
+                "\n"
+                "fun Context.fakeVersionCheck(\n"
+                "    showConfirmationDialog: () -> Unit\n"
+                ") {\n"
+                '    if (!packageName.startsWith("com.simplemobiletools.", true)) {\n'
+                "        if ((0..50).random() == 10 || baseConfig.appRunCount % 100 == 0) {\n"
+                "            showConfirmationDialog()\n"
+                "        }\n"
+                "    }\n"
+                "}\n",
+                'const val DEVELOPER_PLAY_STORE_URL = "https://play.google.com/store/apps/dev?id=9070296388022589266"\n'
+                'const val OFFICIAL_APP_URL = "https://github.com/t0ma5/tomato-gallery/"\n'
+                "const val FAKE_VERSION_APP_LABEL =\n"
+                '    "You are using a fake version of the app. For your own safety download the original one from https://github.com/t0ma5/tomato-gallery/ . Thanks"\n'
+                "\n"
+                "fun Context.fakeVersionCheck(\n"
+                "    showConfirmationDialog: () -> Unit\n"
+                ") {\n"
+                '    val realPackage = packageName.removeSuffix(".debug")\n'
+                '    if (realPackage != "tomato.gallery" && baseConfig.appRunCount > 50) {\n'
+                "        showConfirmationDialog()\n"
+                "    }\n"
+                "}\n"
+                "\n"
+                "fun Activity.showFakeVersionWarning() {\n"
+                "    fakeVersionCheck {\n"
+                "        ConfirmationDialog(this, FAKE_VERSION_APP_LABEL, positive = R.string.ok, negative = 0) {\n"
+                "            launchViewIntent(OFFICIAL_APP_URL)\n"
+                "        }\n"
+                "    }\n"
+                "}\n",
+            ),
+        ],
+    )
+    patch(
+        "commons/src/main/kotlin/com/simplemobiletools/commons/compose/extensions/ComposeActivityExtensions.kt",
+        [
+            (
+                "import com.simplemobiletools.commons.dialogs.ConfirmationAlertDialog\n"
+                "import com.simplemobiletools.commons.extensions.launchViewIntent\n"
+                "\n"
+                "@Composable\n"
+                "fun FakeVersionCheck() {\n"
+                "    val context = LocalContext.current.getActivity()\n"
+                "    val confirmationDialogAlertDialogState = rememberAlertDialogState().apply {\n"
+                "        DialogMember {\n"
+                "            ConfirmationAlertDialog(\n"
+                "                alertDialogState = this,\n"
+                "                positive = R.string.ok,\n"
+                "                negative = null,\n"
+                "                message = FAKE_VERSION_APP_LABEL\n"
+                "            ) {\n"
+                "                context.getActivity().launchViewIntent(DEVELOPER_PLAY_STORE_URL)\n"
+                "            }\n"
+                "        }\n"
+                "    }\n"
+                "    LaunchedEffect(Unit) {\n"
+                "        context.fakeVersionCheck(confirmationDialogAlertDialogState::show)\n"
+                "    }\n"
+                "}\n"
+                "\n",
+                "import com.simplemobiletools.commons.dialogs.ConfirmationAlertDialog\n\n",
+            ),
+        ],
+    )
+    patch(
+        "commons/src/main/kotlin/com/simplemobiletools/commons/compose/theme/AppTheme.kt",
+        [
+            (
+                "import com.simplemobiletools.commons.compose.extensions.FakeVersionCheck\n"
+                "import com.simplemobiletools.commons.compose.extensions.TransparentSystemBars\n",
+                "import com.simplemobiletools.commons.compose.extensions.TransparentSystemBars\n",
+            ),
+            (
+                "    Theme(theme = currentTheme) {\n"
+                "        content()\n"
+                "        if (!view.isInEditMode) {\n"
+                "            OnContentDisplayed()\n"
+                "        }\n"
+                "    }\n",
+                "    Theme(theme = currentTheme) {\n"
+                "        content()\n"
+                "    }\n",
+            ),
+            (
+                "\n"
+                "@Composable\n"
+                "private fun OnContentDisplayed() {\n"
+                "    FakeVersionCheck()\n"
+                "}\n",
+                "\n",
+            ),
+        ],
+    )
+
+
 def main() -> None:
     if not ROOT.exists():
         raise SystemExit("Simple-Commons/ is missing")
@@ -657,6 +772,7 @@ def main() -> None:
         ],
     )
 
+    patch_fake_version_warning()
     scrub_simplemobiletools_com()
     print("commons fork patches applied")
 
