@@ -1,0 +1,6 @@
+• Safer saves: editor overwrite is atomic, failed copies are reported, rotate keeps non-JPEG formats intact
+• Recycle Bin keeps stack members and search deletes, and cleans up on restore
+• Duplicate finder confirms with SHA-256 and lets you pick which copy to keep
+• App lock asks again after the grace period; strip-on-share covers every item
+• Viewer More sheet keeps its actions; memory leaks and swipe-down glitches fixed
+• Faster show-all, search and sorting on large libraries

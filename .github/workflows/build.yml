@@ -178,9 +178,58 @@ jobs:
             `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk` for most phones; `...-armeabi-v7a.apk` for 32-bit ARM; `...-x86_64.apk` for 64-bit emulators; `...-FOSS-universal.apk` has all three ABIs.
             They can sit next to Play Store Simple Gallery Pro. The app name is Tomato Gallery. Launcher name is Gallery.
 
-            Version 1.1 (versionCode 101). It does not update installs of tomato.simple.gallery. Those stay as a separate app until you uninstall them.
+            Version 1.2 (versionCode 102). It does not update installs of tomato.simple.gallery. Those stay as a separate app until you uninstall them.
             **Before you uninstall tomato.simple.gallery:** restore or empty its Recycle Bin and export its settings (Settings → Export settings). Uninstalling deletes its bin, tags and folder PINs.
             Version 1.0 replaced the 6.x line. Notes below roll up every earlier GitHub release. The 6.31.2 note is omitted on purpose.
+
+            ## New in 1.2
+
+            ### Your files
+
+            1. **Safe overwrite** — Editor Overwrite and Resize encode the new image first, then swap it in atomically. A crash or out-of-memory error mid-save no longer leaves the original at 0 bytes.
+            2. **Recycle Bin** — Burst and RAW+JPEG stack members, and files deleted from Search, now show up in the bin and can be restored. Two files with the same name no longer replace each other in the bin. A failed move keeps the original. Restore deletes the bin copy and skips a file that copied short.
+            3. **Rotate formats** — In-place rotate only rewrites JPEG, PNG and WebP. HEIC, AVIF, JXL, APNG, GIF and animated WebP get a message instead of being turned into JPEG under the old name. Lossless WebP stays lossless. EXIF is kept.
+            4. **Save errors** — A failed copy is reported as a failure. The editor no longer closes as if it saved, and the backup is kept.
+            5. **Duplicate finder** — Matches by size, then a sampled fingerprint, then a full SHA-256, so files that only look alike are never offered for deletion. The list shows full paths with Keep and Delete. Tap a group to choose which copy stays.
+            6. **Rename and move** — Renaming, moving, hiding or deleting a file now updates its cache row, favorite, tags and date. Renaming a locked folder keeps it locked.
+
+            ### Privacy and security
+
+            1. **App lock on return** — Every screen asks again when you come back after the 5-minute grace period. The grace counts from when you left the app.
+            2. **Strip metadata on share** — Applies to multi-select shares and videos from the player too. A file that cannot be stripped is skipped with a message instead of being sent with its GPS.
+            3. **Other apps** — Other apps can no longer make the gallery write over its own data through a pick or crop request, or open files from locked folders and the Recycle Bin through the editor. The file provider no longer exposes the whole filesystem.
+            4. **Settings export** — Hidden, excluded and included folder lists are left out while their PIN is on.
+            5. **Boot receiver** — Ignores broadcasts other than device boot, so other apps cannot trigger repeated rescans.
+
+            ### Viewer
+
+            1. **More sheet** — Keeps all its actions after a swipe or a favorite toggle. It used to drop to Rotate only.
+            2. **Memory** — Closed viewers, grid tiles and More sheets are freed. Motion photo players, video players and their surfaces are released on exit, and leftover motion photo clips are cleaned up.
+            3. **Swipe down** — Grabbing the photo again stops the spring under your finger. Dismiss uses real fling speed, so drag, pause and lift no longer closes the photo.
+            4. **Smoother paging** — Extended details, content-link images and large JPEG XL files load off the main thread. Static JXL decodes at screen size instead of full size. Each page reads the file head once for panorama and motion photo checks.
+            5. **Multi-window and foldables** — Resizing no longer restarts the viewer, and tapping still toggles full screen after a restart. Rotating the player no longer stacks extra timers.
+            6. **Favorites star** — No longer shows an outline star on a favorite before favorites finish loading.
+
+            ### Editor
+
+            1. **Share with text** — Sharing an edit with text or stickers no longer crashes. The shared file is a real PNG.
+            2. **Save as cancel** — Cancelling Save as after a filter keeps the image and filters.
+            3. **Filters** — Filter previews run off the main thread on a screen-sized copy. Undo no longer doubles memory per step.
+            4. **Video trim** — Save is disabled while exporting, so a double tap cannot corrupt the clip. Leaving the screen cancels the export. Long clips no longer time out. The last fraction of a second can be kept.
+            5. **Lossless rotate edge** — The fallback rotate trims partial edge blocks instead of leaving an unrotated strip.
+
+            ### Library
+
+            1. **Faster show-all, search and duplicates** — The MediaStore is scanned once instead of once per folder on Android 11+. Favorites, recycle bin lookups, name sorting and select-all are much faster on large libraries. Thumbnails no longer read the disk while scrolling.
+            2. **Search** — Results arrive in typing order with a short debounce. Tag search treats `_` and `%` as plain characters. Folders with `_` in the name no longer pick up files from look-alike folders.
+            3. **Folder cache** — Rescanning a folder, for example after unhiding it, no longer empties its cache.
+
+            ### Fixes
+
+            1. **Settings import** — A bad value is skipped instead of crashing the app. Column count 0 can no longer crash every launch.
+            2. **Wallpaper** — Launchers that report a 0 wallpaper size no longer crash Set as wallpaper.
+            3. **Unofficial package warning** — Shows once per app start instead of on every return to Settings.
+            4. **Widgets** — The setup screen shows nothing until the lock is passed. Each widget is sized on its own, and a folder without a thumbnail still opens on tap.
 
             ## New in 1.1
 

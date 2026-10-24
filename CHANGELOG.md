@@ -1,5 +1,32 @@
 # Changelog
 
+## Version 1.2 *(2026-10-24)*
+
+- Editor Overwrite and Resize write the new image atomically; a crash mid-save no longer empties the original
+- Recycle Bin keeps stack members and files deleted from Search, gives same-name files unique names, keeps originals on a failed move, and deletes the bin copy on restore
+- In-place rotate only rewrites JPEG, PNG and WebP; other formats get a message. Lossless WebP stays lossless and EXIF is kept
+- A failed copy is reported as a failure instead of closing the editor as saved
+- Duplicate finder confirms matches with a full SHA-256, shows full paths, and lets you pick which copy to keep
+- Rename, move, hide and delete update the cache, favorites, tags and dates; a renamed locked folder stays locked
+- App lock asks again on every screen after the grace period, counted from when you left the app
+- Strip metadata on share covers multi-select and the video player; files that cannot be stripped are skipped
+- Other apps can no longer make the gallery overwrite its own data, or open locked or binned files through the editor; the file provider no longer exposes the whole filesystem
+- Settings export leaves out PIN-protected folder lists. The boot receiver ignores other broadcasts
+- Viewer More sheet keeps all its actions after a swipe
+- Viewer memory leaks fixed: closed viewers, grid tiles, motion photo and video players, and surfaces are released
+- Swipe down: a second grab stops the spring, and dismiss uses real fling speed
+- Extended details, content-link images and large JPEG XL load off the main thread; static JXL decodes at screen size
+- Multi-window and foldable resizes no longer restart the viewer; rotating the player no longer stacks timers
+- Sharing an edit with text no longer crashes; Save as cancel keeps the image; filter previews run off the main thread; undo uses less memory
+- Video trim blocks double saves, cancels on exit, and no longer times out on long clips
+- Show-all, search and duplicates scan the MediaStore once on Android 11+; large libraries sort, select and scroll faster
+- Search results arrive in order; tag and folder queries escape `_` and `%`
+- Rescanning a folder no longer empties its cache
+- A bad settings import is skipped instead of crashing; column count 0 can no longer crash every launch
+- Set as wallpaper no longer crashes when the launcher reports size 0
+- The unofficial-package warning shows once per app start
+- Widget setup waits for the lock; widgets size per id and open on tap without a thumbnail
+
 ## Version 1.1 *(2026-10-06)*
 
 - Fluid viewer: swipe down tracks the photo and springs closed or back. Open and back scale from the thumbnail. Bars slide and keep the old gradient. Favorite, share, edit, and delete stay on the bar; the rest sit in a More sheet. Editor tools slide up from their icon. Grid tiles scale on press. Slideshow yields to a touch. Animator duration scale 0 uses fades only
