@@ -2,6 +2,10 @@
 <paths>
     <external-path name="external_files" path="." />
     <external-files-path name="external_app_files" path="." />
+    <external-cache-path name="external_cache" path="." />
     <files-path name="recycle_bin" path="recycle_bin/" />
-    <root-path name="root" path="." />
+    <cache-path name="share" path="share/" />
+    <cache-path name="editor_images" path="images/" />
+    <!-- SD cards and USB drives live under /storage/<uuid>; never expose the whole filesystem (app data). -->
+    <root-path name="storage" path="storage/" />
 </paths>

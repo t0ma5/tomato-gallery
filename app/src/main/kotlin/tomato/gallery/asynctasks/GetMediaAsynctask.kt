@@ -51,7 +51,7 @@ class GetMediaAsynctask(
             folderGrouping and GROUP_BY_LAST_MODIFIED_MONTHLY != 0
 
         val getProperFileSize = folderSorting and SORT_BY_SIZE != 0
-        val favoritePaths = context.getFavoritePaths()
+        val favoritePaths = context.getFavoritePaths().toCollection(LinkedHashSet())
         val getVideoDurations = context.config.showThumbnailVideoDuration
         val lastModifieds = if (getProperLastModified) mediaFetcher.getLastModifieds() else HashMap()
         val dateTakens = if (getProperDateTaken) mediaFetcher.getDateTakens() else HashMap()
@@ -59,13 +59,18 @@ class GetMediaAsynctask(
         val media = if (showAll) {
             val foldersToScan = mediaFetcher.getFoldersToScan().filter { it != RECYCLE_BIN && it != FAVORITES && !context.config.isFolderProtected(it) }
             val media = ArrayList<Medium>()
+            // On Android 11+ without all-files access, query MediaStore once for every folder instead of once per folder.
+            // An empty map (other Android versions) makes getFilesFrom fall back to listing the folder.
+            val android11Files = mediaFetcher.getAndroid11FolderMedia(
+                isPickImage, isPickVideo, favoritePaths, false, getProperDateTaken, dateTakens.clone() as HashMap<String, Long>
+            )
             foldersToScan.forEach {
                 if (cancelled) {
                     return@forEach
                 }
                 val newMedia = mediaFetcher.getFilesFrom(
                     it, isPickImage, isPickVideo, getProperDateTaken, getProperLastModified, getProperFileSize,
-                    favoritePaths, getVideoDurations, lastModifieds, dateTakens.clone() as HashMap<String, Long>, null
+                    favoritePaths, getVideoDurations, lastModifieds, dateTakens.clone() as HashMap<String, Long>, android11Files
                 )
                 media.addAll(newMedia)
             }

@@ -2,6 +2,7 @@ package tomato.gallery.activities
 
 import android.graphics.SurfaceTexture
 import android.os.Bundle
+import android.view.Surface
 import android.view.TextureView
 import android.widget.SeekBar
 import androidx.media3.common.MediaItem
@@ -11,7 +12,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.simplemobiletools.commons.extensions.getFormattedDuration
 import com.simplemobiletools.commons.extensions.toast
 import com.simplemobiletools.commons.helpers.NavigationIcon
-import com.simplemobiletools.commons.helpers.ensureBackgroundThread
 import tomato.gallery.R
 import tomato.gallery.databinding.ActivityTrimVideoBinding
 import com.simplemobiletools.commons.extensions.viewBinding
@@ -24,8 +24,13 @@ import java.io.File
 class TrimVideoActivity : SimpleActivity(), TextureView.SurfaceTextureListener {
     private val binding by viewBinding(ActivityTrimVideoBinding::inflate)
     private var player: ExoPlayer? = null
+    private var surface: Surface? = null
+    private var trimJob: VideoTrimHelper.TrimJob? = null
     private var path = ""
     private var durationMs = 0L
+
+    /** Real media duration, or 0 when the player reported none. */
+    private var knownDurationMs = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         isMaterialActivity = true
@@ -62,21 +67,38 @@ class TrimVideoActivity : SimpleActivity(), TextureView.SurfaceTextureListener {
 
     override fun onDestroy() {
         super.onDestroy()
+        trimJob?.cancel()
+        trimJob = null
         player?.release()
         player = null
+        surface?.release()
+        surface = null
     }
 
-    override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+    override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
+        val newSurface = Surface(texture)
+        val existing = player
+        if (existing != null) {
+            // The texture was recreated: move the existing player onto it.
+            existing.setVideoSurface(newSurface)
+            surface?.release()
+            surface = newSurface
+            return
+        }
+        surface?.release()
+        surface = newSurface
         val exo = ExoPlayer.Builder(this).build()
         player = exo
-        exo.setVideoSurface(android.view.Surface(surface))
+        exo.setVideoSurface(newSurface)
         exo.setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(File(path))))
         exo.prepare()
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY && durationMs == 0L) {
-                    durationMs = exo.duration.coerceAtLeast(1000L)
-                    val seconds = (durationMs / 1000).toInt().coerceAtLeast(1)
+                    knownDurationMs = exo.duration.takeIf { it > 0L } ?: 0L
+                    durationMs = knownDurationMs.coerceAtLeast(1000L)
+                    // Round up so the end handle at max reaches the real end of the video.
+                    val seconds = ((durationMs + 999L) / 1000L).toInt().coerceAtLeast(1)
                     binding.trimStart.max = seconds
                     binding.trimEnd.max = seconds
                     binding.trimStart.progress = 0
@@ -90,8 +112,10 @@ class TrimVideoActivity : SimpleActivity(), TextureView.SurfaceTextureListener {
 
     override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
 
-    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+    override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
         player?.clearVideoSurface()
+        surface?.release()
+        surface = null
         return true
     }
 
@@ -122,8 +146,17 @@ class TrimVideoActivity : SimpleActivity(), TextureView.SurfaceTextureListener {
     }
 
     private fun previewEnd() {
-        player?.seekTo(binding.trimEnd.progress * 1000L)
+        player?.seekTo(endPositionMs())
         player?.playWhenReady = false
+    }
+
+    private fun endPositionMs(): Long {
+        val endMs = binding.trimEnd.progress * 1000L
+        return if (knownDurationMs > 0L) endMs.coerceAtMost(knownDurationMs) else endMs
+    }
+
+    private fun setSaveEnabled(enabled: Boolean) {
+        binding.trimToolbar.menu.findItem(R.id.save_trim)?.isEnabled = enabled
     }
 
     private fun updateLabels() {
@@ -132,21 +165,26 @@ class TrimVideoActivity : SimpleActivity(), TextureView.SurfaceTextureListener {
     }
 
     private fun saveTrim() {
+        if (trimJob != null) {
+            return
+        }
         val startMs = binding.trimStart.progress * 1000L
-        val endMs = binding.trimEnd.progress * 1000L
+        val endMs = endPositionMs()
         if (endMs - startMs < 200L) {
             toast(R.string.trim_failed)
             return
         }
         toast(com.simplemobiletools.commons.R.string.saving)
+        setSaveEnabled(false)
         val dest = VideoTrimHelper.outputPath(path)
-        ensureBackgroundThread {
-            VideoTrimHelper.trim(this, path, startMs, endMs, dest) { ok ->
-                toast(if (ok) R.string.video_trimmed else R.string.trim_failed)
-                if (ok) {
-                    setResult(RESULT_OK)
-                    finish()
-                }
+        trimJob = VideoTrimHelper.trim(this, path, startMs, endMs, dest) { ok ->
+            trimJob = null
+            toast(if (ok) R.string.video_trimmed else R.string.trim_failed)
+            if (ok) {
+                setResult(RESULT_OK)
+                finish()
+            } else {
+                setSaveEnabled(true)
             }
         }
     }

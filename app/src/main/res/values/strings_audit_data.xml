@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="duplicate_keep_label">Keep: %s</string>
+    <string name="duplicate_delete_label">Delete: %s</string>
+    <string name="duplicate_choose_keep">Choose the copy to keep</string>
+    <string name="share_strip_failed_skipped">Could not remove metadata from %d file(s), they were not shared</string>
+    <string name="rotate_format_unsupported">Rotating this file format in place is not supported</string>
+</resources>

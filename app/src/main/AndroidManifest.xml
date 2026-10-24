@@ -101,7 +101,7 @@
 
         <activity
             android:name=".activities.ViewPagerActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout"
             android:exported="true"
             android:parentActivityName=".activities.MediaActivity"
             android:theme="@style/TranslucentTheme">
@@ -109,7 +109,6 @@
             <intent-filter>
                 <action android:name="com.android.camera.action.REVIEW" />
                 <action android:name="android.provider.action.REVIEW" />
-                <action android:name="android.provider.action.REVIEW_SECURE" />
 
                 <category android:name="android.intent.category.BROWSABLE" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -135,7 +134,7 @@
 
         <activity
             android:name=".activities.PanoramaActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout"
             android:exported="false"
             android:theme="@style/TranslucentTheme" />
 
@@ -154,13 +153,13 @@
 
         <activity
             android:name=".activities.PhotoVideoActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout"
             android:exported="false"
             android:theme="@style/TranslucentTheme" />
 
         <activity
             android:name=".activities.VideoPlayerActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout"
             android:exported="false"
             android:parentActivityName=".activities.MediaActivity"
             android:theme="@style/TranslucentTheme" />
@@ -203,7 +202,7 @@
 
         <activity
             android:name=".activities.PhotoActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -231,7 +230,7 @@
 
         <activity
             android:name=".activities.VideoActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -310,14 +309,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-
-        <receiver
-            android:name=".receivers.RefreshMediaReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.simplemobiletools.REFRESH_MEDIA" />
-            </intent-filter>
-        </receiver>
 
         <receiver
             android:name=".helpers.MyWidgetProvider"

@@ -24,9 +24,8 @@ class ActionSheetController(
     private var locked = false
     private var downY = 0f
     private var downTranslation = 0f
-    private var lastY = 0f
-    private var lastTime = 0L
     private var velocityY = 0f
+    private val velocity = FlingVelocity(sheet.context)
 
     fun wire() {
         moreButton.setOnClickListener { if (sheet.isShown && sheet.translationY == 0f) close(false) else open() }
@@ -127,24 +126,21 @@ class ActionSheetController(
     private fun onTouch(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                FluidMotion.cancel(sheet, DynamicAnimation.TRANSLATION_Y)
                 tracking = true
                 locked = false
                 downY = event.rawY
                 downTranslation = sheet.translationY
-                lastY = event.rawY
-                lastTime = event.eventTime
                 velocityY = 0f
+                velocity.start(event)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!tracking) return false
+                velocity.move(event)
                 val dy = event.rawY - downY
                 if (!locked && abs(dy) < hysteresis) return true
                 locked = true
-                val dt = (event.eventTime - lastTime).coerceAtLeast(1)
-                velocityY = (event.rawY - lastY) / dt * 1000f
-                lastY = event.rawY
-                lastTime = event.eventTime
                 val raw = downTranslation + dy
                 val height = sheet.height.toFloat().coerceAtLeast(1f)
                 sheet.translationY = when {
@@ -157,13 +153,19 @@ class ActionSheetController(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (!locked) {
                     tracking = false
+                    velocity.clear()
+                    if (sheet.translationY != 0f) {
+                        FluidMotion.spring(sheet, DynamicAnimation.TRANSLATION_Y, 0f, 1f, 0.3f)
+                    }
                     return true
                 }
                 tracking = false
                 locked = false
+                velocityY = if (event.actionMasked == MotionEvent.ACTION_UP) velocity.releaseY(event) else 0f
+                velocity.clear()
                 val height = sheet.height.toFloat().coerceAtLeast(1f)
                 val projected = sheet.translationY + FluidMotion.project(velocityY)
-                val closeSheet = if (abs(velocityY) > 200f) velocityY > 0f else projected > height * 0.5f
+                val closeSheet = if (velocity.isFling(velocityY)) velocityY > 0f else projected > height * 0.5f
                 if (closeSheet) close(true) else {
                     FluidMotion.spring(sheet, DynamicAnimation.TRANSLATION_Y, 0f, 0.8f, 0.3f, velocityY)
                 }

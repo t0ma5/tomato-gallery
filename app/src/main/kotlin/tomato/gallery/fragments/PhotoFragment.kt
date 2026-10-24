@@ -1,5 +1,6 @@
 package tomato.gallery.fragments
 
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -69,12 +70,9 @@ import tomato.gallery.svg.SvgSoftwareLayerSetter
 import com.squareup.picasso.Callback
 import com.squareup.picasso.Picasso
 import it.sephiroth.android.library.exif2.ExifInterface
-import org.apache.sanselan.common.byteSources.ByteSourceInputStream
-import org.apache.sanselan.formats.jpeg.JpegImageParser
 import pl.droidsonroids.gif.InputSource
 import java.io.File
 import java.io.FileOutputStream
-import java.util.HashMap
 import kotlin.math.abs
 import kotlin.math.ceil
 
@@ -98,6 +96,7 @@ class PhotoFragment : ViewPagerFragment() {
     private var mMotionPhotoInfo: MotionPhotoInfo? = null
     private var mMotionPlayer: ExoPlayer? = null
     private var mMotionExtractedFile: File? = null
+    private var mMotionSurface: Surface? = null
     private var mIsSubsamplingVisible = false    // checking view.visibility is unreliable, use an extra variable for it
     private var mShouldResetImage = false
     private var mCurrentPortraitPhotoPath = ""
@@ -186,43 +185,88 @@ class PhotoFragment : ViewPagerFragment() {
             }
 
             if (mMedium.path.isEmpty()) {
-                var out: FileOutputStream? = null
-                try {
-                    var inputStream = requireContext().contentResolver.openInputStream(Uri.parse(mOriginalPath))
-                    val exif = ExifInterface()
-                    exif.readExif(inputStream, ExifInterface.Options.OPTION_ALL)
-                    val tag = exif.getTag(ExifInterface.TAG_ORIENTATION)
-                    val orientation = tag?.getValueAsInt(-1) ?: -1
-                    inputStream = requireContext().contentResolver.openInputStream(Uri.parse(mOriginalPath))
-                    val original = BitmapFactory.decodeStream(inputStream)
-                    val rotated = rotateViaMatrix(original, orientation)
-                    exif.setTagValue(ExifInterface.TAG_ORIENTATION, 1)
-                    exif.removeCompressedThumbnail()
-
-                    val file = File(requireContext().externalCacheDir, Uri.parse(mOriginalPath).lastPathSegment)
-                    out = FileOutputStream(file)
-                    rotated.compress(Bitmap.CompressFormat.JPEG, 100, out)
-                    mMedium.path = file.absolutePath
-                } catch (e: Exception) {
-                    requireActivity().toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
-                    return mView
-                } finally {
-                    out?.close()
+                ensureBackgroundThread {
+                    val cached = decodeContentUriToCache()
+                    activity?.runOnUiThread {
+                        if (!isAdded || view == null) {
+                            return@runOnUiThread
+                        }
+                        if (cached == null) {
+                            activity?.toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+                            return@runOnUiThread
+                        }
+                        mMedium.path = cached
+                        initContent()
+                    }
                 }
+                return mView
             }
         }
 
+        initContent()
+        return mView
+    }
+
+    private fun initContent() {
         mIsFullscreen = requireActivity().window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN == View.SYSTEM_UI_FLAG_FULLSCREEN
         loadImage()
         initExtendedDetails()
         mWasInit = true
         updateInstantSwitchWidths()
         ensureBackgroundThread {
-            checkIfPanorama()
-            checkIfMotionPhoto()
+            val ctx = context ?: return@ensureBackgroundThread
+            val uri = MotionPhotoHelper.pathToUri(mMedium.path)
+            val probe = MotionPhotoHelper.readProbe(ctx, uri)
+            val probeText = probe?.let { MotionPhotoHelper.probeText(it) }
+            checkIfPanorama(probeText)
+            checkIfMotionPhoto(ctx, uri, probe, probeText)
         }
+    }
 
-        return mView
+    // Content URIs without a real path are decoded off the main thread, bounded to a sane size, into the cache.
+    private fun decodeContentUriToCache(): String? {
+        val ctx = context ?: return null
+        val uri = Uri.parse(mOriginalPath)
+        val resolver = ctx.contentResolver
+        return try {
+            val orientation = try {
+                resolver.openInputStream(uri)?.use { stream ->
+                    val exif = ExifInterface()
+                    exif.readExif(stream, ExifInterface.Options.OPTION_ALL)
+                    exif.getTag(ExifInterface.TAG_ORIENTATION)?.getValueAsInt(-1) ?: -1
+                } ?: -1
+            } catch (_: Exception) {
+                -1
+            }
+
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+                return null
+            }
+
+            val maxEdge = (maxOf(mScreenWidth, mScreenHeight) * 2).coerceIn(1024, 4096)
+            var sampleSize = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / sampleSize > maxEdge) {
+                sampleSize *= 2
+            }
+            val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            val original = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) } ?: return null
+            val rotated = rotateViaMatrix(original, orientation)
+            if (rotated !== original) {
+                original.recycle()
+            }
+
+            val name = (uri.lastPathSegment ?: "content_image").replace('/', '_')
+            val file = File(ctx.externalCacheDir ?: ctx.cacheDir, name)
+            FileOutputStream(file).use { rotated.compress(Bitmap.CompressFormat.JPEG, 100, it) }
+            rotated.recycle()
+            file.absolutePath
+        } catch (_: Exception) {
+            null
+        } catch (_: OutOfMemoryError) {
+            null
+        }
     }
 
     override fun onPause() {
@@ -273,9 +317,9 @@ class PhotoFragment : ViewPagerFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        releaseMotionPlayer()
         if (activity?.isDestroyed == false) {
             binding.subsamplingView.recycle()
-            releaseMotionPlayer()
 
             try {
                 if (context != null) {
@@ -490,9 +534,19 @@ class PhotoFragment : ViewPagerFragment() {
                     }
                     return@ensureBackgroundThread
                 }
-                animated?.close()
-
-                val bitmap = JxlCoder.decode(bytes)
+                val bitmap = if (animated != null) {
+                    try {
+                        val srcW = animated.getWidth().coerceAtLeast(1)
+                        val srcH = animated.getHeight().coerceAtLeast(1)
+                        val maxEdge = (maxOf(mScreenWidth, mScreenHeight, 1) * 2).coerceAtMost(4096)
+                        val scale = minOf(1f, maxEdge.toFloat() / maxOf(srcW, srcH))
+                        animated.getFrame(0, (srcW * scale).toInt().coerceAtLeast(1), (srcH * scale).toInt().coerceAtLeast(1))
+                    } finally {
+                        animated.close()
+                    }
+                } else {
+                    JxlCoder.decode(bytes)
+                }
                 activity?.runOnUiThread {
                     if (!isAdded) {
                         return@runOnUiThread
@@ -737,25 +791,13 @@ class PhotoFragment : ViewPagerFragment() {
         }
     }
 
-    private fun checkIfPanorama() {
-        mIsPanorama = try {
-            val input = if (mMedium.path.startsWith("content:/")) {
-                requireContext().contentResolver.openInputStream(Uri.parse(mMedium.path))
-            } else {
-                File(mMedium.path).inputStream()
-            }
-            input.use {
-                val imageParser = JpegImageParser().getXmpXml(ByteSourceInputStream(it, mMedium.name), HashMap<String, Any>()) ?: ""
-                imageParser.contains("GPano:UsePanoramaViewer=\"True\"", true) ||
-                    imageParser.contains("<GPano:UsePanoramaViewer>True</GPano:UsePanoramaViewer>", true) ||
-                    imageParser.contains("GPano:FullPanoWidthPixels=") ||
-                    imageParser.contains("GPano:ProjectionType>Equirectangular")
-            }
-        } catch (_: Exception) {
-            false
-        } catch (_: OutOfMemoryError) {
-            false
-        }
+    // probeText is the file head shared with the motion photo check, so the XMP is read once per page.
+    private fun checkIfPanorama(probeText: String?) {
+        val xmp = probeText ?: ""
+        mIsPanorama = xmp.contains("GPano:UsePanoramaViewer=\"True\"", true) ||
+            xmp.contains("<GPano:UsePanoramaViewer>True</GPano:UsePanoramaViewer>", true) ||
+            xmp.contains("GPano:FullPanoWidthPixels=") ||
+            xmp.contains("GPano:ProjectionType>Equirectangular")
 
         activity?.runOnUiThread {
             binding.panoramaOutline.beVisibleIf(mIsPanorama && mMotionPhotoInfo == null)
@@ -765,10 +807,9 @@ class PhotoFragment : ViewPagerFragment() {
         }
     }
 
-    private fun checkIfMotionPhoto() {
-        val ctx = context ?: return
+    private fun checkIfMotionPhoto(ctx: Context, uri: Uri, probe: ByteArray?, probeText: String?) {
         val info = try {
-            MotionPhotoHelper.parseInfo(ctx, mMedium.path)
+            if (probe != null && probeText != null) MotionPhotoHelper.parseInfo(ctx, uri, probe, probeText) else null
         } catch (_: Exception) {
             null
         }
@@ -834,19 +875,37 @@ class PhotoFragment : ViewPagerFragment() {
         val texture = binding.motionPhotoSurface
         texture.beVisible()
         binding.motionPhotoPlay.beGone()
-        if (texture.isAvailable) {
-            player.setVideoSurface(Surface(texture.surfaceTexture))
-        } else {
-            texture.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-                    player.setVideoSurface(Surface(surface))
-                }
-
-                override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
-                override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean = true
-                override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+        texture.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                attachMotionSurface(player, surface)
             }
+
+            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                if (mMotionPlayer === player) {
+                    player.clearVideoSurface()
+                }
+                mMotionSurface?.release()
+                mMotionSurface = null
+                return true
+            }
+
+            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
         }
+        val surfaceTexture = texture.surfaceTexture
+        if (texture.isAvailable && surfaceTexture != null) {
+            attachMotionSurface(player, surfaceTexture)
+        }
+    }
+
+    private fun attachMotionSurface(player: ExoPlayer, surfaceTexture: SurfaceTexture) {
+        if (mMotionPlayer !== player) {
+            return
+        }
+        mMotionSurface?.release()
+        val surface = Surface(surfaceTexture)
+        mMotionSurface = surface
+        player.setVideoSurface(surface)
     }
 
     private fun pauseMotionPhoto() {
@@ -859,6 +918,8 @@ class PhotoFragment : ViewPagerFragment() {
     private fun releaseMotionPlayer() {
         mMotionPlayer?.release()
         mMotionPlayer = null
+        mMotionSurface?.release()
+        mMotionSurface = null
         mMotionExtractedFile?.delete()
         mMotionExtractedFile = null
         if (::binding.isInitialized) {
@@ -1020,11 +1081,11 @@ class PhotoFragment : ViewPagerFragment() {
         try {
             val path = getFilePathToShow()
             orient = if (path.startsWith("content:/")) {
-                val inputStream = requireContext().contentResolver.openInputStream(Uri.parse(path))
-                val exif = ExifInterface()
-                exif.readExif(inputStream, ExifInterface.Options.OPTION_ALL)
-                val tag = exif.getTag(ExifInterface.TAG_ORIENTATION)
-                tag?.getValueAsInt(defaultOrientation) ?: defaultOrientation
+                requireContext().contentResolver.openInputStream(Uri.parse(path))?.use { inputStream ->
+                    val exif = ExifInterface()
+                    exif.readExif(inputStream, ExifInterface.Options.OPTION_ALL)
+                    exif.getTag(ExifInterface.TAG_ORIENTATION)?.getValueAsInt(defaultOrientation)
+                } ?: defaultOrientation
             } else {
                 val exif = androidx.exifinterface.media.ExifInterface(path)
                 exif.getAttributeInt(TAG_ORIENTATION, defaultOrientation)
@@ -1032,10 +1093,11 @@ class PhotoFragment : ViewPagerFragment() {
 
             if (orient == defaultOrientation || requireContext().isPathOnOTG(getFilePathToShow())) {
                 val uri = if (path.startsWith("content:/")) Uri.parse(path) else Uri.fromFile(File(path))
-                val inputStream = requireContext().contentResolver.openInputStream(uri)
-                val exif2 = ExifInterface()
-                exif2.readExif(inputStream, ExifInterface.Options.OPTION_ALL)
-                orient = exif2.getTag(ExifInterface.TAG_ORIENTATION)?.getValueAsInt(defaultOrientation) ?: defaultOrientation
+                orient = requireContext().contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val exif2 = ExifInterface()
+                    exif2.readExif(inputStream, ExifInterface.Options.OPTION_ALL)
+                    exif2.getTag(ExifInterface.TAG_ORIENTATION)?.getValueAsInt(defaultOrientation)
+                } ?: defaultOrientation
             }
         } catch (ignored: Exception) {
         } catch (ignored: OutOfMemoryError) {
@@ -1076,17 +1138,22 @@ class PhotoFragment : ViewPagerFragment() {
     private fun initExtendedDetails() {
         val ctx = context ?: return
         if (ctx.config.showExtendedDetails) {
-            binding.photoDetails.apply {
-                beInvisible()   // make it invisible so we can measure it, but not show yet
-                text = getMediumExtendedDetails(mMedium)
-                onGlobalLayout {
-                    if (isAdded) {
-                        val realY = getExtendedDetailsY(height)
-                        if (realY > 0) {
-                            y = realY
-                            beVisibleIf(text.isNotEmpty())
-                            val hideExtendedDetails = context?.config?.hideExtendedDetails == true
-                            alpha = if (!hideExtendedDetails || !mIsFullscreen) 1f else 0f
+            binding.photoDetails.beInvisible()   // make it invisible so we can measure it, but not show yet
+            loadExtendedDetails(mMedium) { details ->
+                if (context?.config?.showExtendedDetails != true) {
+                    return@loadExtendedDetails
+                }
+                binding.photoDetails.apply {
+                    text = details
+                    onGlobalLayout {
+                        if (isAdded) {
+                            val realY = getExtendedDetailsY(height)
+                            if (realY > 0) {
+                                y = realY
+                                beVisibleIf(text.isNotEmpty())
+                                val hideExtendedDetails = context?.config?.hideExtendedDetails == true
+                                alpha = if (!hideExtendedDetails || !mIsFullscreen) 1f else 0f
+                            }
                         }
                     }
                 }

@@ -9,6 +9,7 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import com.canhub.cropper.CropImageView
 import com.simplemobiletools.commons.dialogs.RadioGroupDialog
+import com.simplemobiletools.commons.extensions.showErrorToast
 import com.simplemobiletools.commons.extensions.toast
 import com.simplemobiletools.commons.extensions.viewBinding
 import com.simplemobiletools.commons.helpers.NavigationIcon
@@ -106,8 +107,8 @@ class SetWallpaperActivity : SimpleActivity(), CropImageView.OnCropImageComplete
     }
 
     private fun setupAspectRatio() {
-        var widthToUse = wallpaperManager.desiredMinimumWidth
-        val heightToUse = wallpaperManager.desiredMinimumHeight
+        var widthToUse = getWallpaperWidth()
+        val heightToUse = getWallpaperHeight()
         if (widthToUse == heightToUse) {
             widthToUse /= 2
         }
@@ -117,6 +118,17 @@ class SetWallpaperActivity : SimpleActivity(), CropImageView.OnCropImageComplete
             RATIO_LANDSCAPE -> binding.cropImageView.setAspectRatio(widthToUse, heightToUse)
             else -> binding.cropImageView.setAspectRatio(widthToUse, widthToUse)
         }
+    }
+
+    // Some launchers report 0 (or -1) for the desired size, so fall back to the screen size
+    private fun getWallpaperWidth(): Int {
+        val desired = wallpaperManager.desiredMinimumWidth
+        return if (desired > 0) desired else resources.displayMetrics.widthPixels.coerceAtLeast(1)
+    }
+
+    private fun getWallpaperHeight(): Int {
+        val desired = wallpaperManager.desiredMinimumHeight
+        return if (desired > 0) desired else resources.displayMetrics.heightPixels.coerceAtLeast(1)
     }
 
     private fun changeAspectRatio() {
@@ -149,9 +161,9 @@ class SetWallpaperActivity : SimpleActivity(), CropImageView.OnCropImageComplete
             toast(R.string.setting_wallpaper)
             ensureBackgroundThread {
                 val bitmap = result.bitmap!!
-                val wantedHeight = wallpaperManager.desiredMinimumHeight
+                val wantedHeight = getWallpaperHeight()
                 val ratio = wantedHeight / bitmap.height.toFloat()
-                val wantedWidth = (bitmap.width * ratio).toInt()
+                val wantedWidth = (bitmap.width * ratio).toInt().coerceAtLeast(1)
                 try {
                     val scaledBitmap = Bitmap.createScaledBitmap(bitmap, wantedWidth, wantedHeight, true)
                     if (isNougatPlus()) {
@@ -162,6 +174,9 @@ class SetWallpaperActivity : SimpleActivity(), CropImageView.OnCropImageComplete
                     setResult(Activity.RESULT_OK)
                 } catch (e: OutOfMemoryError) {
                     toast(com.simplemobiletools.commons.R.string.out_of_memory_error)
+                    setResult(Activity.RESULT_CANCELED)
+                } catch (e: Exception) {
+                    showErrorToast(e)
                     setResult(Activity.RESULT_CANCELED)
                 }
                 finish()

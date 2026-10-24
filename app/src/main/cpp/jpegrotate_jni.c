@@ -39,8 +39,8 @@ Java_tomato_gallery_helpers_JpegTransform_rotateNative(
     jpeg_transform_info info;
     jvirt_barray_ptr *coefs;
     jvirt_barray_ptr *dstcoefs;
-    jint result = -1;
-    int created = 0;
+    volatile jint result = -1;
+    volatile int created = 0;
 
     (void) clazz;
 
@@ -55,7 +55,7 @@ Java_tomato_gallery_helpers_JpegTransform_rotateNative(
         case 270: info.transform = JXFORM_ROT_270; break;
         default: goto done;
     }
-    info.trim = FALSE;
+    info.trim = TRUE;
     info.perfect = FALSE;
     info.force_grayscale = FALSE;
     info.crop = FALSE;

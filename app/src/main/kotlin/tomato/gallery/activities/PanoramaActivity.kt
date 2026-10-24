@@ -150,7 +150,7 @@ class PanoramaActivity : SimpleActivity(), SensorEventListener {
                     } else {
                         retriever.setDataSource(path)
                     }
-                    retriever.getFrameAtTime(0)
+                    retriever.getFrameAtTime(0)?.let { boundToTextureSize(it, MAX_TEXTURE_SIDE) }
                 } finally {
                     retriever.release()
                 }
@@ -158,7 +158,7 @@ class PanoramaActivity : SimpleActivity(), SensorEventListener {
                 val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 decode(path, opts)
                 opts.inJustDecodeBounds = false
-                opts.inSampleSize = sampleSize(opts.outWidth, opts.outHeight, 4096)
+                opts.inSampleSize = sampleSize(opts.outWidth, opts.outHeight, MAX_TEXTURE_SIDE)
                 decode(path, opts)
             }
         } catch (_: Exception) {
@@ -174,6 +174,22 @@ class PanoramaActivity : SimpleActivity(), SensorEventListener {
         }
     }
 
+    // GL_MAX_TEXTURE_SIZE is at least 4096 on every device this app supports, so frames are kept within that.
+    private fun boundToTextureSize(bitmap: Bitmap, maxSide: Int): Bitmap {
+        val longest = maxOf(bitmap.width, bitmap.height)
+        if (longest <= maxSide) {
+            return bitmap
+        }
+        val scale = maxSide.toFloat() / longest
+        val width = (bitmap.width * scale).toInt().coerceIn(1, maxSide)
+        val height = (bitmap.height * scale).toInt().coerceIn(1, maxSide)
+        val scaled = Bitmap.createScaledBitmap(bitmap, width, height, true)
+        if (scaled !== bitmap) {
+            bitmap.recycle()
+        }
+        return scaled
+    }
+
     private fun sampleSize(width: Int, height: Int, maxSide: Int): Int {
         var sample = 1
         var w = width
@@ -184,5 +200,9 @@ class PanoramaActivity : SimpleActivity(), SensorEventListener {
             h /= 2
         }
         return sample.coerceAtLeast(1)
+    }
+
+    private companion object {
+        const val MAX_TEXTURE_SIDE = 4096
     }
 }

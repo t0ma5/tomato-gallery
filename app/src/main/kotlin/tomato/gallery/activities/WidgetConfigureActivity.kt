@@ -37,16 +37,22 @@ class WidgetConfigureActivity : SimpleActivity() {
         super.onCreate(savedInstanceState)
         setResult(RESULT_CANCELED)
         setContentView(binding.root)
-        ensureAppUnlocked {
-            initVariables()
-        }
 
         mWidgetId = intent.extras?.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID) ?: AppWidgetManager.INVALID_APPWIDGET_ID
 
         if (mWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
             finish()
+            return
         }
 
+        // Colors and album thumbnails stay unset until the app lock is passed
+        ensureAppUnlocked {
+            initVariables()
+            setupViews()
+        }
+    }
+
+    private fun setupViews() {
         binding.configSave.setOnClickListener { saveConfig() }
         binding.configBgColor.setOnClickListener { pickBackgroundColor() }
         binding.configTextColor.setOnClickListener { pickTextColor() }

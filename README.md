@@ -12,6 +12,8 @@ APKs are published on [GitHub Releases](https://github.com/t0ma5/tomato-gallery/
 - `Tomato-Gallery_<version>-FOSS-x86_64.apk` (emulators)
 - `Tomato-Gallery_<version>-FOSS-universal.apk` (all included)
 
+**Coming from the old `tomato.simple.gallery` app?** It installs as a separate app. Before you uninstall the old one, restore or empty its Recycle Bin and export its settings (Settings → Export settings), then import them here. Uninstalling it deletes its bin, tags and folder PINs.
+
 ## New features in this fork
 
 The original Simple Gallery Pro workflow, plus a new completely FOSS editor, OCR, AVIF/JXL, motion photos, 360° panoramas, and much more. Still offline, still FOSS and GPL-3.0

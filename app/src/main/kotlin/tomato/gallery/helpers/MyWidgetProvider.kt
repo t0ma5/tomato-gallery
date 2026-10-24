@@ -24,6 +24,10 @@ import tomato.gallery.extensions.widgetsDB
 import tomato.gallery.models.Widget
 
 class MyWidgetProvider : AppWidgetProvider() {
+    companion object {
+        private const val DEFAULT_WIDGET_SIZE_DP = 180
+    }
+
     private fun setupAppOpenIntent(context: Context, views: RemoteViews, id: Int, widget: Widget) {
         val intent = Intent(context, MediaActivity::class.java).apply {
             putExtra(DIRECTORY, widget.folderPath)
@@ -45,7 +49,16 @@ class MyWidgetProvider : AppWidgetProvider() {
                     setText(R.id.widget_folder_name, context.getFolderNameFromPath(it.folderPath))
                 }
 
-                val path = context.directoryDB.getDirectoryThumbnail(it.folderPath) ?: return@forEach
+                val path = context.directoryDB.getDirectoryThumbnail(it.folderPath)
+                if (path == null) {
+                    // No thumbnail yet (empty or unscanned album): still make the widget open the album
+                    setupAppOpenIntent(context, views, R.id.widget_holder, it)
+                    try {
+                        appWidgetManager.updateAppWidget(it.widgetId, views)
+                    } catch (ignored: Exception) {
+                    }
+                    return@forEach
+                }
                 if (context.config.isFolderProtected(it.folderPath) || context.config.isPathInProtectedFolder(it.folderPath)) {
                     views.setImageViewResource(R.id.widget_imageview, com.simplemobiletools.commons.R.drawable.ic_lock_vector)
                     setupAppOpenIntent(context, views, R.id.widget_holder, it)
@@ -66,11 +79,12 @@ class MyWidgetProvider : AppWidgetProvider() {
                 }
 
                 val density = context.resources.displayMetrics.density
-                val appWidgetOptions = appWidgetManager.getAppWidgetOptions(appWidgetIds.first())
+                val appWidgetOptions = appWidgetManager.getAppWidgetOptions(it.widgetId)
                 val width = appWidgetOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
                 val height = appWidgetOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
 
-                val widgetSize = (Math.max(width, height) * density).toInt()
+                val sizeDp = Math.max(width, height).takeIf { size -> size > 0 } ?: DEFAULT_WIDGET_SIZE_DP
+                val widgetSize = (sizeDp * density).toInt()
                 try {
                     val image = Glide.with(context)
                         .asBitmap()

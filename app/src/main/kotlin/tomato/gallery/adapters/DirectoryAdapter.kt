@@ -275,6 +275,8 @@ class DirectoryAdapter(
                             ensureBackgroundThread {
                                 try {
                                     activity.directoryDB.updateDirectoryAfterRename(firstDir.tmb, firstDir.name, firstDir.path, sourcePath)
+                                    // media, favorites, tags, date takens, subfolders and folder locks follow the folder
+                                    activity.onFolderMoved(sourcePath, firstDir.path)
                                     listener?.refreshItems()
                                 } catch (e: Exception) {
                                     activity.showErrorToast(e)
@@ -554,6 +556,11 @@ class DirectoryAdapter(
             val newPaths = fileDirItems.map { "$destinationPath/${it.name}" }.toMutableList() as ArrayList<String>
             activity.rescanPaths(newPaths) {
                 activity.fixDateTaken(newPaths, false)
+            }
+
+            if (!isCopyOperation) {
+                // carry media rows, favorites, tags and date takens over to the moved files
+                activity.updateFavoritePaths(fileDirItems, destinationPath)
             }
 
             config.tempFolderPath = ""

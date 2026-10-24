@@ -93,6 +93,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
     private var mMediaFiles = ArrayList<Medium>()
     private var mFavoritePaths = ArrayList<String>()
+    private var mFavoritesLoaded = false
     private var mIgnoredPaths = ArrayList<String>()
 
     private val binding by viewBinding(ActivityMediumBinding::inflate)
@@ -157,6 +158,9 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         }
 
         initFavorites()
+        if (savedInstanceState == null) {
+            ensureBackgroundThread { MotionPhotoHelper.clearStaleExtractions(applicationContext) }
+        }
     }
 
     override fun onResume() {
@@ -205,10 +209,12 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
     fun refreshMenuItems() {
         val currentMedium = getCurrentMedium() ?: return
-        currentMedium.isFavorite = mFavoritePaths.contains(currentMedium.path)
         val visibleBottomActions = if (config.bottomActions) config.visibleBottomActions else 0
 
         runOnUiThread {
+            if (mFavoritesLoaded) {
+                currentMedium.isFavorite = mFavoritePaths.contains(currentMedium.path)
+            }
             val rotationDegrees = getCurrentPhotoFragment()?.mCurrentRotationDegrees ?: 0
             binding.mediumViewerToolbar.menu.apply {
                 findItem(R.id.menu_show_on_map).isVisible = visibleBottomActions and BOTTOM_ACTION_SHOW_ON_MAP == 0
@@ -516,7 +522,14 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
     private fun initFavorites() {
         ensureBackgroundThread {
-            mFavoritePaths = getFavoritePaths()
+            val favorites = getFavoritePaths()
+            runOnUiThread {
+                mFavoritePaths = favorites
+                mFavoritesLoaded = true
+                if (!isDestroyed) {
+                    refreshMenuItems()
+                }
+            }
         }
     }
 
@@ -947,46 +960,37 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     }
 
     private fun initBottomActionButtons() {
-        val currentMedium = getCurrentMedium()
-        val visibleBottomActions = if (config.bottomActions) config.visibleBottomActions else 0
-        binding.bottomActions.bottomFavorite.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_TOGGLE_FAVORITE != 0 && currentMedium?.getIsInRecycleBin() == false)
         binding.bottomActions.bottomFavorite.setOnLongClickListener { toast(R.string.toggle_favorite); true }
         binding.bottomActions.bottomFavorite.setOnClickListener {
             toggleFavorite()
         }
 
-        binding.bottomActions.bottomEdit.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_EDIT != 0 && currentMedium?.isSVG() == false)
         binding.bottomActions.bottomEdit.setOnLongClickListener { toast(R.string.edit); true }
         binding.bottomActions.bottomEdit.setOnClickListener {
             openEditor(getCurrentPath())
         }
 
-        binding.bottomActions.bottomShare.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_SHARE != 0)
         binding.bottomActions.bottomShare.setOnLongClickListener { toast(com.simplemobiletools.commons.R.string.share); true }
         binding.bottomActions.bottomShare.setOnClickListener {
             shareMediumPath(getCurrentPath())
         }
 
-        binding.bottomActions.bottomDelete.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_DELETE != 0)
         binding.bottomActions.bottomDelete.setOnLongClickListener { toast(com.simplemobiletools.commons.R.string.delete); true }
         binding.bottomActions.bottomDelete.setOnClickListener {
             checkDeleteConfirmation()
         }
 
-        binding.bottomActions.bottomRotate.beVisibleIf(config.visibleBottomActions and BOTTOM_ACTION_ROTATE != 0 && getCurrentMedium()?.isImage() == true)
         binding.bottomActions.bottomRotate.setOnLongClickListener { toast(R.string.rotate); true }
         binding.bottomActions.bottomRotate.setOnClickListener {
             rotateImage(90)
         }
 
         binding.bottomActions.bottomProperties.applyColorFilter(Color.WHITE)
-        binding.bottomActions.bottomProperties.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_PROPERTIES != 0)
         binding.bottomActions.bottomProperties.setOnLongClickListener { toast(com.simplemobiletools.commons.R.string.properties); true }
         binding.bottomActions.bottomProperties.setOnClickListener {
             showProperties()
         }
 
-        binding.bottomActions.bottomChangeOrientation.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_CHANGE_ORIENTATION != 0)
         binding.bottomActions.bottomChangeOrientation.setOnLongClickListener { toast(R.string.change_orientation); true }
         binding.bottomActions.bottomChangeOrientation.setOnClickListener {
             requestedOrientation = when (requestedOrientation) {
@@ -995,30 +999,28 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                 else -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             }
             mIsOrientationLocked = requestedOrientation != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            updateBottomActionIcons(currentMedium)
+            updateBottomActionIcons(getCurrentMedium())
         }
 
-        binding.bottomActions.bottomSlideshow.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_SLIDESHOW != 0)
         binding.bottomActions.bottomSlideshow.setOnLongClickListener { toast(R.string.slideshow); true }
         binding.bottomActions.bottomSlideshow.setOnClickListener {
             initSlideshow()
         }
 
-        binding.bottomActions.bottomShowOnMap.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_SHOW_ON_MAP != 0)
         binding.bottomActions.bottomShowOnMap.setOnLongClickListener { toast(R.string.show_on_map); true }
         binding.bottomActions.bottomShowOnMap.setOnClickListener {
             showFileOnMap(getCurrentPath())
         }
 
-        binding.bottomActions.bottomToggleFileVisibility.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_TOGGLE_VISIBILITY != 0)
         binding.bottomActions.bottomToggleFileVisibility.setOnLongClickListener {
-            toast(if (currentMedium?.isHidden() == true) com.simplemobiletools.commons.R.string.unhide else com.simplemobiletools.commons.R.string.hide); true
+            toast(if (getCurrentMedium()?.isHidden() == true) com.simplemobiletools.commons.R.string.unhide else com.simplemobiletools.commons.R.string.hide); true
         }
 
         binding.bottomActions.bottomToggleFileVisibility.setOnClickListener {
             if (mIsTogglingVisibility) {
                 return@setOnClickListener
             }
+            val currentMedium = getCurrentMedium()
             currentMedium?.apply {
                 toggleFileVisibility(!isHidden()) {
                     updateBottomActionIcons(currentMedium)
@@ -1026,31 +1028,26 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             }
         }
 
-        binding.bottomActions.bottomRename.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_RENAME != 0 && currentMedium?.getIsInRecycleBin() == false)
         binding.bottomActions.bottomRename.setOnLongClickListener { toast(com.simplemobiletools.commons.R.string.rename); true }
         binding.bottomActions.bottomRename.setOnClickListener {
             checkMediaManagementAndRename()
         }
 
-        binding.bottomActions.bottomSetAs.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_SET_AS != 0)
         binding.bottomActions.bottomSetAs.setOnLongClickListener { toast(com.simplemobiletools.commons.R.string.set_as); true }
         binding.bottomActions.bottomSetAs.setOnClickListener {
             setAs(getCurrentPath())
         }
 
-        binding.bottomActions.bottomCopy.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_COPY != 0)
         binding.bottomActions.bottomCopy.setOnLongClickListener { toast(com.simplemobiletools.commons.R.string.copy); true }
         binding.bottomActions.bottomCopy.setOnClickListener {
             checkMediaManagementAndCopy(true)
         }
 
-        binding.bottomActions.bottomMove.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_MOVE != 0)
         binding.bottomActions.bottomMove.setOnLongClickListener { toast(com.simplemobiletools.commons.R.string.move); true }
         binding.bottomActions.bottomMove.setOnClickListener {
             moveFileTo()
         }
 
-        binding.bottomActions.bottomResize.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_RESIZE != 0 && currentMedium?.isImage() == true)
         binding.bottomActions.bottomResize.setOnLongClickListener { toast(com.simplemobiletools.commons.R.string.resize); true }
         binding.bottomActions.bottomResize.setOnClickListener {
             resizeImage()
@@ -1058,24 +1055,32 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         syncMoreSheet()
     }
 
+    // Visibility comes from config and the current medium only. Secondary actions stay gone and are listed in the More sheet.
     private fun syncMoreSheet() {
         if (!::actionSheet.isInitialized) return
-        val secondary = listOf(
-            binding.bottomActions.bottomRotate,
-            binding.bottomActions.bottomProperties,
-            binding.bottomActions.bottomChangeOrientation,
-            binding.bottomActions.bottomSlideshow,
-            binding.bottomActions.bottomShowOnMap,
-            binding.bottomActions.bottomToggleFileVisibility,
-            binding.bottomActions.bottomRename,
-            binding.bottomActions.bottomSetAs,
-            binding.bottomActions.bottomCopy,
-            binding.bottomActions.bottomMove,
-            binding.bottomActions.bottomResize,
+        val medium = getCurrentMedium()
+        val visibleBottomActions = if (config.bottomActions) config.visibleBottomActions else 0
+        fun enabled(action: Int) = visibleBottomActions and action != 0
+        val isImage = medium?.isImage() == true
+        binding.bottomActions.bottomFavorite.beVisibleIf(enabled(BOTTOM_ACTION_TOGGLE_FAVORITE) && medium?.getIsInRecycleBin() == false)
+        binding.bottomActions.bottomEdit.beVisibleIf(enabled(BOTTOM_ACTION_EDIT) && medium?.isSVG() == false)
+        binding.bottomActions.bottomShare.beVisibleIf(enabled(BOTTOM_ACTION_SHARE))
+        binding.bottomActions.bottomDelete.beVisibleIf(enabled(BOTTOM_ACTION_DELETE))
+        val secondary = listOf<Pair<View, Boolean>>(
+            binding.bottomActions.bottomRotate to (enabled(BOTTOM_ACTION_ROTATE) && isImage),
+            binding.bottomActions.bottomProperties to enabled(BOTTOM_ACTION_PROPERTIES),
+            binding.bottomActions.bottomChangeOrientation to enabled(BOTTOM_ACTION_CHANGE_ORIENTATION),
+            binding.bottomActions.bottomSlideshow to enabled(BOTTOM_ACTION_SLIDESHOW),
+            binding.bottomActions.bottomShowOnMap to enabled(BOTTOM_ACTION_SHOW_ON_MAP),
+            binding.bottomActions.bottomToggleFileVisibility to enabled(BOTTOM_ACTION_TOGGLE_VISIBILITY),
+            binding.bottomActions.bottomRename to (enabled(BOTTOM_ACTION_RENAME) && medium?.getIsInRecycleBin() == false),
+            binding.bottomActions.bottomSetAs to enabled(BOTTOM_ACTION_SET_AS),
+            binding.bottomActions.bottomCopy to enabled(BOTTOM_ACTION_COPY),
+            binding.bottomActions.bottomMove to enabled(BOTTOM_ACTION_MOVE),
+            binding.bottomActions.bottomResize to (enabled(BOTTOM_ACTION_RESIZE) && isImage),
         )
-        val shown = secondary.filter { it.visibility == View.VISIBLE }
-        secondary.forEach { it.beGone() }
-        actionSheet.bind(shown)
+        secondary.forEach { it.first.beGone() }
+        actionSheet.bind(secondary.filter { it.second }.map { it.first })
     }
 
     private fun updateBottomActionIcons(medium: Medium?) {
@@ -1091,7 +1096,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             if (medium.isHidden()) com.simplemobiletools.commons.R.drawable.ic_unhide_vector else com.simplemobiletools.commons.R.drawable.ic_hide_vector
         binding.bottomActions.bottomToggleFileVisibility.setImageResource(hideIcon)
 
-        binding.bottomActions.bottomRotate.beVisibleIf(config.visibleBottomActions and BOTTOM_ACTION_ROTATE != 0 && getCurrentMedium()?.isImage() == true)
         binding.bottomActions.bottomChangeOrientation.setImageResource(getChangeOrientationIcon())
         syncMoreSheet()
     }
@@ -1099,13 +1103,14 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private fun toggleFavorite() {
         val medium = getCurrentMedium() ?: return
         medium.isFavorite = !medium.isFavorite
+        val isFavorite = medium.isFavorite
+        if (isFavorite) {
+            if (!mFavoritePaths.contains(medium.path)) mFavoritePaths.add(medium.path)
+        } else {
+            mFavoritePaths.remove(medium.path)
+        }
         ensureBackgroundThread {
-            updateFavorite(medium.path, medium.isFavorite)
-            if (medium.isFavorite) {
-                mFavoritePaths.add(medium.path)
-            } else {
-                mFavoritePaths.remove(medium.path)
-            }
+            updateFavorite(medium.path, isFavorite)
 
             runOnUiThread {
                 binding.bottomActions.bottomFavorite.let { star ->
@@ -1547,9 +1552,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
         if (refetchViewPagerPosition || mPos == -1) {
             mPos = getPositionInList(media)
-            if (mPos == -1) {
-                min(mPos, media.lastIndex)
-            }
         }
 
         updateActionbarTitle()

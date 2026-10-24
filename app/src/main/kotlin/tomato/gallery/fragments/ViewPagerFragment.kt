@@ -1,5 +1,6 @@
 package tomato.gallery.fragments
 
+import android.content.Context
 import android.graphics.Point
 import android.provider.MediaStore
 import android.provider.MediaStore.Files
@@ -9,6 +10,7 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.fragment.app.Fragment
 import com.awxkee.jxlcoder.JxlCoder
 import com.simplemobiletools.commons.extensions.*
+import com.simplemobiletools.commons.helpers.ensureBackgroundThread
 import tomato.gallery.extensions.config
 import tomato.gallery.helpers.*
 import tomato.gallery.models.Medium
@@ -18,6 +20,32 @@ abstract class ViewPagerFragment : Fragment() {
     var listener: FragmentListener? = null
 
     abstract fun fullscreenToggled(isFullscreen: Boolean)
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        // after a recreation the host never sets the listener on restored fragments
+        if (listener == null) {
+            listener = activity as? FragmentListener
+        }
+    }
+
+    /** Builds the extended details off the main thread and delivers them while the view is still alive. */
+    protected fun loadExtendedDetails(medium: Medium, onReady: (String) -> Unit) {
+        ensureBackgroundThread {
+            val details = try {
+                getMediumExtendedDetails(medium)
+            } catch (_: Exception) {
+                ""
+            } catch (_: OutOfMemoryError) {
+                ""
+            }
+            activity?.runOnUiThread {
+                if (isAdded && view != null) {
+                    onReady(details)
+                }
+            }
+        }
+    }
 
     interface FragmentListener {
         fun fragmentClicked()
@@ -36,12 +64,13 @@ abstract class ViewPagerFragment : Fragment() {
     }
 
     fun getMediumExtendedDetails(medium: Medium): String {
+        val ctx = context ?: return ""
         val file = File(medium.path)
-        if (context?.getDoesFilePathExist(file.absolutePath) == false) {
+        if (!ctx.getDoesFilePathExist(file.absolutePath)) {
             return ""
         }
 
-        val path = "${file.parent.trimEnd('/')}/"
+        val path = "${(file.parent ?: "").trimEnd('/')}/"
         val exif = try {
             ExifInterface(medium.path)
         } catch (e: Exception) {
@@ -49,7 +78,7 @@ abstract class ViewPagerFragment : Fragment() {
         }
 
         val details = StringBuilder()
-        val detailsFlag = context!!.config.extendedDetails
+        val detailsFlag = ctx.config.extendedDetails
         if (detailsFlag and EXT_NAME != 0) {
             medium.name.let { if (it.isNotEmpty()) details.appendLine(it) }
         }
@@ -63,15 +92,15 @@ abstract class ViewPagerFragment : Fragment() {
         }
 
         if (detailsFlag and EXT_RESOLUTION != 0) {
-            getResolution(medium, file)?.let { if (it.isNotEmpty()) details.appendLine(it) }
+            getResolution(ctx, medium, file)?.let { if (it.isNotEmpty()) details.appendLine(it) }
         }
 
         if (detailsFlag and EXT_LAST_MODIFIED != 0) {
-            getFileLastModified(file).let { if (it.isNotEmpty()) details.appendLine(it) }
+            getFileLastModified(ctx, file).let { if (it.isNotEmpty()) details.appendLine(it) }
         }
 
         if (detailsFlag and EXT_DATE_TAKEN != 0) {
-            exif.getExifDateTaken(context!!).let { if (it.isNotEmpty()) details.appendLine(it) }
+            exif.getExifDateTaken(ctx).let { if (it.isNotEmpty()) details.appendLine(it) }
         }
 
         if (detailsFlag and EXT_CAMERA_MODEL != 0) {
@@ -83,53 +112,78 @@ abstract class ViewPagerFragment : Fragment() {
         }
 
         if (detailsFlag and EXT_GPS != 0) {
-            getLatLonAltitude(medium.path).let { if (it.isNotEmpty()) details.appendLine(it) }
+            getLatLonAltitude(exif).let { if (it.isNotEmpty()) details.appendLine(it) }
         }
         return details.toString().trim()
     }
 
     fun getPathToLoad(medium: Medium) = if (context?.isPathOnOTG(medium.path) == true) medium.path.getOTGPublicPath(context!!) else medium.path
 
-    private fun getResolution(medium: Medium, file: File): String? {
+    private fun getResolution(ctx: Context, medium: Medium, file: File): String? {
         if (medium.name.isJxl()) {
-            val resolution = try {
-                JxlCoder.getSize(file.readBytes())
+            return getJxlSize(file)?.formatAsResolution()
+        }
+
+        return ctx.getResolution(file.absolutePath)?.formatAsResolution()
+    }
+
+    // The JXL size lives in the header, so try the file head first and only read everything if that is not enough.
+    private fun getJxlSize(file: File): Point? {
+        val head = try {
+            file.inputStream().use { input ->
+                val buf = ByteArray(JXL_HEADER_PROBE)
+                var total = 0
+                while (total < buf.size) {
+                    val n = input.read(buf, total, buf.size - total)
+                    if (n <= 0) break
+                    total += n
+                }
+                if (total == buf.size) buf else buf.copyOf(total)
+            }
+        } catch (_: Exception) {
+            return null
+        }
+
+        fun sizeOf(bytes: ByteArray) = try {
+            JxlCoder.getSize(bytes)?.let { Point(it.width, it.height) }?.takeIf { it.x > 0 && it.y > 0 }
+        } catch (_: OutOfMemoryError) {
+            null
+        } catch (_: Exception) {
+            null
+        }
+
+        return sizeOf(head) ?: if (head.size < JXL_HEADER_PROBE) {
+            null
+        } else {
+            try {
+                sizeOf(file.readBytes())
             } catch (_: OutOfMemoryError) {
                 null
             } catch (_: Exception) {
                 null
             }
-            return resolution?.let { Point(it.width, it.height).formatAsResolution() }
         }
-
-        return context?.getResolution(file.absolutePath)?.formatAsResolution()
     }
 
-    private fun getFileLastModified(file: File): String {
+    private fun getFileLastModified(ctx: Context, file: File): String {
         val projection = arrayOf(Images.Media.DATE_MODIFIED)
         val uri = Files.getContentUri("external")
         val selection = "${MediaStore.MediaColumns.DATA} = ?"
         val selectionArgs = arrayOf(file.absolutePath)
-        val cursor = context!!.contentResolver.query(uri, projection, selection, selectionArgs, null)
+        val cursor = ctx.contentResolver.query(uri, projection, selection, selectionArgs, null)
         cursor?.use {
             return if (cursor.moveToFirst()) {
                 val dateModified = cursor.getLongValue(Images.Media.DATE_MODIFIED) * 1000L
-                dateModified.formatDate(context!!)
+                dateModified.formatDate(ctx)
             } else {
-                file.lastModified().formatDate(context!!)
+                file.lastModified().formatDate(ctx)
             }
         }
         return ""
     }
 
-    private fun getLatLonAltitude(path: String): String {
+    private fun getLatLonAltitude(exif: ExifInterface): String {
         var result = ""
-        val exif = try {
-            ExifInterface(path)
-        } catch (e: Exception) {
-            return ""
-        }
-
         val latLon = FloatArray(2)
 
         if (exif.getLatLong(latLon)) {
@@ -142,6 +196,10 @@ abstract class ViewPagerFragment : Fragment() {
         }
 
         return result.trimStart(',').trim()
+    }
+
+    private companion object {
+        const val JXL_HEADER_PROBE = 64 * 1024
     }
 
     protected fun handleEvent(event: MotionEvent): Boolean {

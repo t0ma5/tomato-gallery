@@ -20,7 +20,8 @@ interface MediaTagsDao {
     @Query("SELECT DISTINCT full_path FROM media_tags WHERE tag = :tag COLLATE NOCASE")
     fun getPathsWithTag(tag: String): List<String>
 
-    @Query("SELECT DISTINCT full_path FROM media_tags WHERE tag LIKE '%' || :query || '%' COLLATE NOCASE")
+    // :query must have the LIKE wildcards % and _ (and the escape char itself) escaped with a backslash
+    @Query("SELECT DISTINCT full_path FROM media_tags WHERE tag LIKE '%' || :query || '%' ESCAPE '\\'")
     fun getPathsMatchingTag(query: String): List<String>
 
     @Query("DELETE FROM media_tags WHERE full_path = :path COLLATE NOCASE AND tag = :tag COLLATE NOCASE")
@@ -29,6 +30,9 @@ interface MediaTagsDao {
     @Query("DELETE FROM media_tags WHERE full_path = :path COLLATE NOCASE")
     fun deleteTagsForPath(path: String)
 
-    @Query("UPDATE media_tags SET full_path = :newPath WHERE full_path = :oldPath COLLATE NOCASE")
-    fun updatePath(oldPath: String, newPath: String)
+    @Query("UPDATE OR REPLACE media_tags SET full_path = :newPath WHERE full_path = :oldPath COLLATE NOCASE")
+    fun updatePath(oldPath: String, newPath: String): Int
+
+    @Query("UPDATE OR REPLACE media_tags SET full_path = :newPrefix || substr(full_path, length(:oldPrefix) + 1) WHERE substr(full_path, 1, length(:oldPrefix)) = :oldPrefix COLLATE NOCASE")
+    fun updateFolderPrefix(oldPrefix: String, newPrefix: String): Int
 }

@@ -11,6 +11,7 @@
 ## Version 1.0 *(2026-10-01)*
 
 - Application id is tomato.gallery (versionCode 100).
+- The old tomato.simple.gallery app stays installed separately. Before uninstalling it, restore or empty its Recycle Bin and export its settings; uninstalling deletes its bin, tags and folder PINs
 - Copy printed text and numbers from a photo with on-device PaddleOCR. A second run on the same photo stays in the viewer.
 - The Android launcher name stays Gallery. Release APKs are named `Tomato-Gallery_<version>-FOSS-<abi>.apk` (arm64-v8a, armeabi-v7a, x86_64, universal)
 - Grid thumbnails stay bound to the file in that cell. A slow video thumbnail can no longer keep showing the previous file, which led to deleting the wrong item

@@ -71,8 +71,20 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
     var mIsPlaying = false
 
     private var mExoPlayer: ExoPlayer? = null
+    private var mVideoSurface: Surface? = null
     private var mVideoSize = Point(1, 1)
     private var mTimerHandler = Handler(Looper.getMainLooper())
+    private val mTimerRunnable = object : Runnable {
+        override fun run() {
+            if (mExoPlayer != null && !mIsDragged && mIsPlaying) {
+                mCurrTime = (mExoPlayer!!.currentPosition / 1000).toInt()
+                mSeekBar.progress = mCurrTime
+                mCurrTimeView.text = mCurrTime.getFormattedDuration()
+            }
+
+            mTimerHandler.postDelayed(this, 1000)
+        }
+    }
 
     private var mStoredShowExtendedDetails = false
     private var mStoredHideExtendedDetails = false
@@ -303,9 +315,8 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
 
     override fun onDestroy() {
         super.onDestroy()
-        if (activity?.isChangingConfigurations == false) {
-            cleanup()
-        }
+        // the fragment is recreated with the activity, so a player kept across a config change would only leak
+        cleanup()
     }
 
     override fun setMenuVisibility(menuVisible: Boolean) {
@@ -370,17 +381,8 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
     }
 
     private fun setupTimer() {
-        activity?.runOnUiThread(object : Runnable {
-            override fun run() {
-                if (mExoPlayer != null && !mIsDragged && mIsPlaying) {
-                    mCurrTime = (mExoPlayer!!.currentPosition / 1000).toInt()
-                    mSeekBar.progress = mCurrTime
-                    mCurrTimeView.text = mCurrTime.getFormattedDuration()
-                }
-
-                mTimerHandler.postDelayed(this, 1000)
-            }
-        })
+        mTimerHandler.removeCallbacks(mTimerRunnable)
+        mTimerHandler.post(mTimerRunnable)
     }
 
     private fun initExoPlayer() {
@@ -442,14 +444,25 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
                 )
                 prepare()
 
-                if (mTextureView.surfaceTexture != null) {
-                    setVideoSurface(Surface(mTextureView.surfaceTexture))
-                }
-
                 initListeners()
             }
 
+        mTextureView.surfaceTexture?.let { attachVideoSurface(it) }
         updatePlayerMuteState()
+    }
+
+    private fun attachVideoSurface(surfaceTexture: SurfaceTexture) {
+        val player = mExoPlayer ?: return
+        mVideoSurface?.release()
+        val surface = Surface(surfaceTexture)
+        mVideoSurface = surface
+        player.setVideoSurface(surface)
+    }
+
+    private fun releaseVideoSurface() {
+        mExoPlayer?.clearVideoSurface()
+        mVideoSurface?.release()
+        mVideoSurface = null
     }
 
     private fun ExoPlayer.initListeners() {
@@ -518,16 +531,21 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
 
     private fun checkExtendedDetails() {
         if (mConfig.showExtendedDetails) {
-            binding.videoDetails.apply {
-                beInvisible()   // make it invisible so we can measure it, but not show yet
-                text = getMediumExtendedDetails(mMedium)
-                onGlobalLayout {
-                    if (isAdded) {
-                        val realY = getExtendedDetailsY(height)
-                        if (realY > 0) {
-                            y = realY
-                            beVisibleIf(text.isNotEmpty())
-                            alpha = if (!mConfig.hideExtendedDetails || !mIsFullscreen) 1f else 0f
+            binding.videoDetails.beInvisible()   // make it invisible so we can measure it, but not show yet
+            loadExtendedDetails(mMedium) { details ->
+                if (!mConfig.showExtendedDetails) {
+                    return@loadExtendedDetails
+                }
+                binding.videoDetails.apply {
+                    text = details
+                    onGlobalLayout {
+                        if (isAdded) {
+                            val realY = getExtendedDetailsY(height)
+                            if (realY > 0) {
+                                y = realY
+                                beVisibleIf(text.isNotEmpty())
+                                alpha = if (!mConfig.hideExtendedDetails || !mIsFullscreen) 1f else 0f
+                            }
                         }
                     }
                 }
@@ -830,16 +848,17 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
     private fun cleanup() {
         pauseVideo()
         releaseExoPlayer()
+        mTimerHandler.removeCallbacksAndMessages(null)
 
         if (mWasFragmentInit) {
             mCurrTimeView.text = 0.getFormattedDuration()
             mSeekBar.progress = 0
-            mTimerHandler.removeCallbacksAndMessages(null)
         }
     }
 
     private fun releaseExoPlayer() {
         mIsPlayerPrepared = false
+        releaseVideoSurface()
         mExoPlayer?.apply {
             stop()
             release()
@@ -851,10 +870,13 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
 
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
 
-    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture) = false
+    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+        releaseVideoSurface()
+        return true
+    }
 
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        mExoPlayer?.setVideoSurface(Surface(mTextureView.surfaceTexture))
+        attachVideoSurface(surface)
     }
 
     fun captureFrame(): android.graphics.Bitmap? {

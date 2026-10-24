@@ -36,10 +36,14 @@ interface MediumDao {
     fun deleteMediumPath(path: String)
 
     @Query("UPDATE OR REPLACE media SET filename = :newFilename, full_path = :newFullPath, parent_path = :newParentPath WHERE full_path = :oldPath COLLATE NOCASE")
-    fun updateMedium(oldPath: String, newParentPath: String, newFilename: String, newFullPath: String)
+    fun updateMedium(oldPath: String, newParentPath: String, newFilename: String, newFullPath: String): Int
 
     @Query("UPDATE OR REPLACE media SET full_path = :newPath, deleted_ts = :deletedTS WHERE full_path = :oldPath COLLATE NOCASE")
-    fun updateDeleted(newPath: String, deletedTS: Long, oldPath: String)
+    fun updateDeleted(newPath: String, deletedTS: Long, oldPath: String): Int
+
+    // :oldPrefix and :newPrefix end with '/', rows strictly inside the old folder are moved
+    @Query("UPDATE OR REPLACE media SET full_path = :newPrefix || substr(full_path, length(:oldPrefix) + 1), parent_path = substr(:newPrefix, 1, length(:newPrefix) - 1) || substr(parent_path, length(:oldPrefix)) WHERE substr(full_path, 1, length(:oldPrefix)) = :oldPrefix COLLATE NOCASE")
+    fun updateFolderPrefix(oldPrefix: String, newPrefix: String): Int
 
     @Query("UPDATE media SET date_taken = :dateTaken WHERE full_path = :path COLLATE NOCASE")
     fun updateFavoriteDateTaken(path: String, dateTaken: Long)

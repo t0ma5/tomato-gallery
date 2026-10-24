@@ -208,8 +208,6 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getInt(VIDEO_PLAYER_TYPE, VIDEO_PLAYER_SYSTEM)
         set(videoPlayerType) = prefs.edit().putInt(VIDEO_PLAYER_TYPE, videoPlayerType).apply()
 
-    fun hasVideoPlayerTypePref() = prefs.contains(VIDEO_PLAYER_TYPE)
-
     fun isPathInProtectedFolder(path: String): Boolean {
         if (path.isEmpty() || path == FAVORITES || path == RECYCLE_BIN) {
             return false
@@ -258,7 +256,7 @@ class Config(context: Context) : BaseConfig(context) {
         set(filterMedia) = prefs.edit().putInt(FILTER_MEDIA, filterMedia).apply()
 
     var dirColumnCnt: Int
-        get() = prefs.getInt(getDirectoryColumnsField(), getDefaultDirectoryColumnCount())
+        get() = prefs.getInt(getDirectoryColumnsField(), getDefaultDirectoryColumnCount()).coerceIn(1, MAX_COLUMN_COUNT)
         set(dirColumnCnt) = prefs.edit().putInt(getDirectoryColumnsField(), dirColumnCnt).apply()
 
     var defaultFolder: String
@@ -295,7 +293,7 @@ class Config(context: Context) : BaseConfig(context) {
     )
 
     var mediaColumnCnt: Int
-        get() = prefs.getInt(getMediaColumnsField(), getDefaultMediaColumnCount())
+        get() = prefs.getInt(getMediaColumnsField(), getDefaultMediaColumnCount()).coerceIn(1, MAX_COLUMN_COUNT)
         set(mediaColumnCnt) = prefs.edit().putInt(getMediaColumnsField(), mediaColumnCnt).apply()
 
     private fun getMediaColumnsField(): String {
@@ -349,7 +347,7 @@ class Config(context: Context) : BaseConfig(context) {
         set(allowVideoGestures) = prefs.edit().putBoolean(ALLOW_VIDEO_GESTURES, allowVideoGestures).apply()
 
     var slideshowInterval: Int
-        get() = prefs.getInt(SLIDESHOW_INTERVAL, SLIDESHOW_DEFAULT_INTERVAL)
+        get() = prefs.getInt(SLIDESHOW_INTERVAL, SLIDESHOW_DEFAULT_INTERVAL).coerceIn(1, MAX_SLIDESHOW_INTERVAL)
         set(slideshowInterval) = prefs.edit().putInt(SLIDESHOW_INTERVAL, slideshowInterval).apply()
 
     var slideshowIncludeVideos: Boolean

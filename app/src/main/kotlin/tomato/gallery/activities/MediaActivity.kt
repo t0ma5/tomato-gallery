@@ -61,6 +61,13 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
     private var mTempShowHiddenHandler = Handler(Looper.getMainLooper())
     private var mCurrAsyncTask: GetMediaAsynctask? = null
     private var mZoomListener: MyRecyclerView.MyZoomListener? = null
+    private val mSearchHandler = Handler(Looper.getMainLooper())
+    private val mSearchExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val SEARCH_DEBOUNCE_MS = 150L
+    private var mCachedRowKeys = HashMap<String, String>()
+
+    @Volatile
+    private var mSearchGeneration = 0
 
     private var mStoredAnimateGifs = true
     private var mStoredCropThumbnails = true
@@ -249,6 +256,9 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         }
 
         mTempShowHiddenHandler.removeCallbacksAndMessages(null)
+        mSearchHandler.removeCallbacksAndMessages(null)
+        mSearchGeneration++
+        mSearchExecutor.shutdown()
     }
 
     override fun finish() {
@@ -396,15 +406,47 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
     }
 
     private fun searchQueryChanged(text: String) {
-        ensureBackgroundThread {
+        // one worker thread, a short debounce and a generation check: results never arrive out of order
+        val generation = ++mSearchGeneration
+        val source = mMedia.clone() as ArrayList<ThumbnailItem>
+        mSearchHandler.removeCallbacksAndMessages(null)
+        mSearchHandler.postDelayed({
+            if (generation != mSearchGeneration) {
+                return@postDelayed
+            }
+            runSearch(text, source, generation)
+        }, SEARCH_DEBOUNCE_MS)
+    }
+
+    private fun runSearch(text: String, source: ArrayList<ThumbnailItem>, generation: Int) {
+        if (mSearchExecutor.isShutdown) {
+            return
+        }
+        try {
+            submitSearch(text, source, generation)
+        } catch (ignored: java.util.concurrent.RejectedExecutionException) {
+        }
+    }
+
+    private fun submitSearch(text: String, source: ArrayList<ThumbnailItem>, generation: Int) {
+        mSearchExecutor.execute {
+            if (generation != mSearchGeneration) {
+                return@execute
+            }
             try {
                 val tagPaths = pathsMatchingTagQuery(text)
-                val filtered = mMedia.filter {
+                val filtered = source.filter {
                     it is Medium && (it.name.contains(text, true) || tagPaths.contains(it.path.lowercase()))
                 } as ArrayList
                 filtered.sortBy { it is Medium && !it.name.startsWith(text, true) }
                 val grouped = MediaFetcher(applicationContext).groupMedia(filtered as ArrayList<Medium>, mPath)
+                if (generation != mSearchGeneration) {
+                    return@execute
+                }
                 runOnUiThread {
+                    if (generation != mSearchGeneration || isDestroyed) {
+                        return@runOnUiThread
+                    }
                     if (grouped.isEmpty()) {
                         binding.mediaEmptyTextPlaceholder.text = getString(com.simplemobiletools.commons.R.string.no_items_found)
                         binding.mediaEmptyTextPlaceholder.beVisible()
@@ -1006,16 +1048,29 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
 
         mLatestMediaId = getLatestMediaId()
         mLatestMediaDateId = getLatestMediaByDateId()
-        if (!isFromCache) {
-            val mediaToInsert = (mMedia).filter { it is Medium && it.deletedTS == 0L }.map { it as Medium }
-            Thread {
-                try {
-                    mediaDB.insertAll(mediaToInsert)
-                } catch (e: Exception) {
-                }
-            }.start()
+        if (isFromCache) {
+            mCachedRowKeys = media.filterIsInstance<Medium>().associateTo(HashMap()) { it.path to it.cacheRowKey() }
+        } else {
+            // only write rows that are new or changed; re-inserting the whole folder under REPLACE on every open
+            // churns ids and does a lot of needless writes
+            val cachedKeys = mCachedRowKeys
+            val mediaToInsert = media.filterIsInstance<Medium>().filter {
+                it.deletedTS == 0L && cachedKeys[it.path] != it.cacheRowKey()
+            }
+            // the DB now matches this fetch, the next refresh only writes what changed since
+            mCachedRowKeys = media.filterIsInstance<Medium>().associateTo(HashMap()) { it.path to it.cacheRowKey() }
+            if (mediaToInsert.isNotEmpty()) {
+                Thread {
+                    try {
+                        mediaDB.insertAll(mediaToInsert)
+                    } catch (e: Exception) {
+                    }
+                }.start()
+            }
         }
     }
+
+    private fun Medium.cacheRowKey() = "$name|$parentPath|$modified|$taken|$size|$type|$videoDuration|$isFavorite|$mediaStoreId"
 
     override fun tryDeleteFiles(fileDirItems: ArrayList<FileDirItem>, skipRecycleBin: Boolean) {
         val filtered = fileDirItems.filter { !getIsPathDirectory(it.path) && it.path.isGalleryMediaFile() } as ArrayList
@@ -1044,11 +1099,19 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
             val movingItems = resources.getQuantityString(com.simplemobiletools.commons.R.plurals.moving_items_into_bin, filtered.size, filtered.size)
             toast(movingItems)
 
-            movePathsInRecycleBin(filtered.map { it.path } as ArrayList<String>) {
-                if (it) {
-                    deleteFilteredFiles(filtered)
-                } else {
-                    toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+            // delete only the originals whose bin copy succeeded
+            movePathsInRecycleBinPartially(filtered.map { it.path } as ArrayList<String>) { moved ->
+                val movedSet = moved.toHashSet()
+                val movedItems = filtered.filter { movedSet.contains(it.path) } as ArrayList<FileDirItem>
+                runOnUiThread {
+                    if (movedItems.size < filtered.size) {
+                        toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+                        // the grid already dropped every selected item, bring back the ones that stayed
+                        refreshItems()
+                    }
+                    if (movedItems.isNotEmpty()) {
+                        deleteFilteredFiles(movedItems)
+                    }
                 }
             }
         } else {
@@ -1073,7 +1136,8 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
                 val useRecycleBin = config.useRecycleBin
                 filtered.forEach {
                     if (it.path.startsWith(recycleBinPath) || !useRecycleBin) {
-                        deleteDBPath(it.path)
+                        // deleted for good: drop favorite, tags and date taken too
+                        onPathDeleted(it.path)
                     }
                 }
             }

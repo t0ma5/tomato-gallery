@@ -57,6 +57,9 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
         )
         actionSheet = ActionSheetController(binding.viewerMoreSheet, binding.viewerSheetDim, binding.bottomActions.bottomMore)
         actionSheet.wire()
+        if (savedInstanceState == null) {
+            ensureBackgroundThread { MotionPhotoHelper.clearStaleExtractions(applicationContext) }
+        }
         setupEdgeToEdge(padBottomSystem = listOf(binding.bottomActions.bottomActionsWrapper))
         setupOptionsMenu()
         refreshMenuItems()
@@ -246,6 +249,9 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
             mFragment!!.listener = this
             mFragment!!.arguments = bundle
             supportFragmentManager.beginTransaction().replace(R.id.fragment_placeholder, mFragment!!).commit()
+        } else {
+            mFragment = supportFragmentManager.findFragmentById(R.id.fragment_placeholder) as? ViewPagerFragment
+            mFragment?.listener = this
         }
 
         binding.fragmentPlaceholder.post {
@@ -385,19 +391,20 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
             }
         }
 
-        binding.bottomActions.bottomSetAs.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_SET_AS != 0 && mMedium?.isImage() == true)
         binding.bottomActions.bottomSetAs.setOnClickListener {
             setAs(mUri!!.toString())
         }
 
-        binding.bottomActions.bottomShowOnMap.beVisibleIf(visibleBottomActions and BOTTOM_ACTION_SHOW_ON_MAP != 0)
         binding.bottomActions.bottomShowOnMap.setOnClickListener {
             showFileOnMap(mUri!!.toString())
         }
-        val secondary = listOf(binding.bottomActions.bottomSetAs, binding.bottomActions.bottomShowOnMap)
-        val shown = secondary.filter { it.visibility == View.VISIBLE }
-        secondary.forEach { it.beGone() }
-        actionSheet.bind(shown)
+        // computed from config, never read back from the views (they stay gone and live in the More sheet)
+        val secondary = listOf<Pair<View, Boolean>>(
+            binding.bottomActions.bottomSetAs to (visibleBottomActions and BOTTOM_ACTION_SET_AS != 0 && mMedium?.isImage() == true),
+            binding.bottomActions.bottomShowOnMap to (visibleBottomActions and BOTTOM_ACTION_SHOW_ON_MAP != 0),
+        )
+        secondary.forEach { it.first.beGone() }
+        actionSheet.bind(secondary.filter { it.second }.map { it.first })
     }
 
     override fun fragmentClicked() {

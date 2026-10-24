@@ -27,21 +27,49 @@ import java.util.Locale
 import kotlin.system.exitProcess
 
 class SettingsActivity : SimpleActivity() {
+    companion object {
+        // Once per process, so OK -> browser -> back doesn't loop the dialog
+        private var fakeVersionWarningShown = false
+    }
+
     private var mRecycleBinContentSize = 0L
     private val binding by viewBinding(ActivitySettingsBinding::inflate)
     private val importSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data?.data != null) {
-            parseFile(contentResolver.openInputStream(result.data!!.data!!))
+        val uri = result.data?.data
+        if (result.resultCode == Activity.RESULT_OK && uri != null) {
+            ensureBackgroundThread {
+                val stream = try {
+                    contentResolver.openInputStream(uri)
+                } catch (e: Exception) {
+                    showErrorToast(e)
+                    return@ensureBackgroundThread
+                }
+                parseFile(stream)
+            }
         }
     }
     private val exportFavoritesLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data?.data != null) {
-            exportFavoritesTo(contentResolver.openOutputStream(result.data!!.data!!))
+        val uri = result.data?.data
+        if (result.resultCode == Activity.RESULT_OK && uri != null) {
+            val stream = try {
+                contentResolver.openOutputStream(uri)
+            } catch (e: Exception) {
+                showErrorToast(e)
+                return@registerForActivityResult
+            }
+            exportFavoritesTo(stream)
         }
     }
     private val importFavoritesLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data?.data != null) {
-            importFavorites(contentResolver.openInputStream(result.data!!.data!!))
+        val uri = result.data?.data
+        if (result.resultCode == Activity.RESULT_OK && uri != null) {
+            val stream = try {
+                contentResolver.openInputStream(uri)
+            } catch (e: Exception) {
+                showErrorToast(e)
+                return@registerForActivityResult
+            }
+            importFavorites(stream)
         }
     }
 
@@ -59,7 +87,10 @@ class SettingsActivity : SimpleActivity() {
         ensureAppUnlocked {
             setupToolbar(binding.settingsToolbar, NavigationIcon.Arrow)
             setupSettingItems()
-            showFakeVersionWarning()
+            if (!fakeVersionWarningShown) {
+                fakeVersionWarningShown = true
+                showFakeVersionWarning()
+            }
         }
     }
 
@@ -944,9 +975,14 @@ class SettingsActivity : SimpleActivity() {
                 put(WIDGET_TEXT_COLOR, config.widgetTextColor)
                 put(DATE_FORMAT, config.dateFormat)
                 put(USE_24_HOUR_FORMAT, config.use24HourFormat)
-                put(INCLUDED_FOLDERS, TextUtils.join(",", config.includedFolders))
-                put(EXCLUDED_FOLDERS, TextUtils.join(",", config.excludedFolders))
-                put(SHOW_HIDDEN_MEDIA, config.showHiddenMedia)
+                // Folder lists and the hidden-media toggle stay out of the file while their PIN is on
+                if (!config.isHiddenPasswordProtectionOn) {
+                    put(INCLUDED_FOLDERS, TextUtils.join(",", config.includedFolders))
+                    put(SHOW_HIDDEN_MEDIA, config.showHiddenMedia)
+                }
+                if (!config.isExcludedPasswordProtectionOn) {
+                    put(EXCLUDED_FOLDERS, TextUtils.join(",", config.excludedFolders))
+                }
                 put(FILE_LOADING_PRIORITY, config.fileLoadingPriority)
                 put(AUTOPLAY_VIDEOS, config.autoplayVideos)
                 put(REMEMBER_LAST_VIDEO_POSITION, config.rememberLastVideoPosition)
@@ -1054,6 +1090,7 @@ class SettingsActivity : SimpleActivity() {
         var importedItems = 0
         val configValues = LinkedHashMap<String, Any>()
         val skippedProtectedKeys = ArrayList<String>()
+        val skippedInvalidKeys = ArrayList<String>()
         inputStream.bufferedReader().use {
             while (true) {
                 try {
@@ -1070,121 +1107,129 @@ class SettingsActivity : SimpleActivity() {
         }
 
         for ((key, value) in configValues) {
-            when (key) {
-                IS_USING_SHARED_THEME -> config.isUsingSharedTheme = value.toBoolean()
-                TEXT_COLOR -> config.textColor = value.toInt()
-                BACKGROUND_COLOR -> config.backgroundColor = value.toInt()
-                PRIMARY_COLOR -> config.primaryColor = value.toInt()
-                ACCENT_COLOR -> config.accentColor = value.toInt()
-                APP_ICON_COLOR -> {
-                    if (getAppIconColors().contains(value.toInt())) {
-                        config.appIconColor = value.toInt()
-                        checkAppIconColor()
-                    }
-                }
-
-                USE_ENGLISH -> config.useEnglish = value.toBoolean()
-                WAS_USE_ENGLISH_TOGGLED -> config.wasUseEnglishToggled = value.toBoolean()
-                WIDGET_BG_COLOR -> config.widgetBgColor = value.toInt()
-                WIDGET_TEXT_COLOR -> config.widgetTextColor = value.toInt()
-                DATE_FORMAT -> config.dateFormat = value.toString()
-                USE_24_HOUR_FORMAT -> config.use24HourFormat = value.toBoolean()
-                INCLUDED_FOLDERS -> {
-                    if (config.isHiddenPasswordProtectionOn) skippedProtectedKeys.add(key) else config.addIncludedFolders(value.toStringSet())
-                }
-                EXCLUDED_FOLDERS -> {
-                    if (config.isExcludedPasswordProtectionOn) skippedProtectedKeys.add(key) else config.addExcludedFolders(value.toStringSet())
-                }
-                SHOW_HIDDEN_MEDIA -> {
-                    if (config.isHiddenPasswordProtectionOn) skippedProtectedKeys.add(key) else config.showHiddenMedia = value.toBoolean()
-                }
-                FILE_LOADING_PRIORITY -> config.fileLoadingPriority = value.toInt()
-                AUTOPLAY_VIDEOS -> config.autoplayVideos = value.toBoolean()
-                REMEMBER_LAST_VIDEO_POSITION -> config.rememberLastVideoPosition = value.toBoolean()
-                LOOP_VIDEOS -> config.loopVideos = value.toBoolean()
-                OPEN_VIDEOS_ON_SEPARATE_SCREEN -> config.openVideosOnSeparateScreen = value.toBoolean()
-                VIDEO_PLAYER_TYPE -> config.videoPlayerType = value.toInt()
-                ALLOW_VIDEO_GESTURES -> config.allowVideoGestures = value.toBoolean()
-                ANIMATE_GIFS -> config.animateGifs = value.toBoolean()
-                CROP_THUMBNAILS -> config.cropThumbnails = value.toBoolean()
-                SHOW_THUMBNAIL_VIDEO_DURATION -> config.showThumbnailVideoDuration = value.toBoolean()
-                SHOW_THUMBNAIL_FILE_TYPES -> config.showThumbnailFileTypes = value.toBoolean()
-                MARK_FAVORITE_ITEMS -> config.markFavoriteItems = value.toBoolean()
-                SCROLL_HORIZONTALLY -> config.scrollHorizontally = value.toBoolean()
-                ENABLE_PULL_TO_REFRESH -> config.enablePullToRefresh = value.toBoolean()
-                MAX_BRIGHTNESS -> config.maxBrightness = value.toBoolean()
-                ULTRA_HDR_RENDERING -> config.ultraHdrRendering = value.toBoolean()
-                BLACK_BACKGROUND -> config.blackBackground = value.toBoolean()
-                HIDE_SYSTEM_UI -> config.hideSystemUI = value.toBoolean()
-                ALLOW_INSTANT_CHANGE -> config.allowInstantChange = value.toBoolean()
-                KEEP_SCREEN_ON -> config.keepScreenOn = value.toBoolean()
-                ALLOW_PHOTO_GESTURES -> config.allowPhotoGestures = value.toBoolean()
-                ALLOW_DOWN_GESTURE -> config.allowDownGesture = value.toBoolean()
-                ALLOW_ROTATING_WITH_GESTURES -> config.allowRotatingWithGestures = value.toBoolean()
-                SHOW_NOTCH -> config.showNotch = value.toBoolean()
-                SCREEN_ROTATION -> config.screenRotation = value.toInt()
-                ALLOW_ZOOMING_IMAGES -> config.allowZoomingImages = value.toBoolean()
-                SHOW_HIGHEST_QUALITY -> config.showHighestQuality = value.toBoolean()
-                ALLOW_ONE_TO_ONE_ZOOM -> config.allowOneToOneZoom = value.toBoolean()
-                SHOW_EXTENDED_DETAILS -> config.showExtendedDetails = value.toBoolean()
-                HIDE_EXTENDED_DETAILS -> config.hideExtendedDetails = value.toBoolean()
-                EXTENDED_DETAILS -> config.extendedDetails = value.toInt()
-                DELETE_EMPTY_FOLDERS -> config.deleteEmptyFolders = value.toBoolean()
-                KEEP_LAST_MODIFIED -> config.keepLastModified = value.toBoolean()
-                SKIP_DELETE_CONFIRMATION -> config.skipDeleteConfirmation = value.toBoolean()
-                BOTTOM_ACTIONS -> config.bottomActions = value.toBoolean()
-                VISIBLE_BOTTOM_ACTIONS -> config.visibleBottomActions = value.toInt()
-                USE_RECYCLE_BIN -> config.useRecycleBin = value.toBoolean()
-                SHOW_RECYCLE_BIN_AT_FOLDERS -> config.showRecycleBinAtFolders = value.toBoolean()
-                SHOW_RECYCLE_BIN_LAST -> config.showRecycleBinLast = value.toBoolean()
-                SORT_ORDER -> config.sorting = value.toInt()
-                DIRECTORY_SORT_ORDER -> config.directorySorting = value.toInt()
-                GROUP_BY -> config.groupBy = value.toInt()
-                GROUP_DIRECT_SUBFOLDERS -> config.groupDirectSubfolders = value.toBoolean()
-                PINNED_FOLDERS -> config.addPinnedFolders(value.toStringSet())
-                DISPLAY_FILE_NAMES -> config.displayFileNames = value.toBoolean()
-                FILTER_MEDIA -> config.filterMedia = value.toInt()
-                DIR_COLUMN_CNT -> config.dirColumnCnt = value.toInt()
-                MEDIA_COLUMN_CNT -> config.mediaColumnCnt = value.toInt()
-                SHOW_ALL -> config.showAll = value.toBoolean()
-                SHOW_WIDGET_FOLDER_NAME -> config.showWidgetFolderName = value.toBoolean()
-                VIEW_TYPE_FILES -> config.viewTypeFiles = value.toInt()
-                VIEW_TYPE_FOLDERS -> config.viewTypeFolders = value.toInt()
-                SLIDESHOW_INTERVAL -> config.slideshowInterval = value.toInt()
-                SLIDESHOW_INCLUDE_VIDEOS -> config.slideshowIncludeVideos = value.toBoolean()
-                SLIDESHOW_INCLUDE_GIFS -> config.slideshowIncludeGIFs = value.toBoolean()
-                SLIDESHOW_RANDOM_ORDER -> config.slideshowRandomOrder = value.toBoolean()
-                SLIDESHOW_MOVE_BACKWARDS -> config.slideshowMoveBackwards = value.toBoolean()
-                SLIDESHOW_LOOP -> config.loopSlideshow = value.toBoolean()
-                LAST_EDITOR_CROP_ASPECT_RATIO -> config.lastEditorCropAspectRatio = value.toInt()
-                LAST_EDITOR_CROP_OTHER_ASPECT_RATIO_X -> config.lastEditorCropOtherAspectRatioX = value.toString().toFloat()
-                LAST_EDITOR_CROP_OTHER_ASPECT_RATIO_Y -> config.lastEditorCropOtherAspectRatioY = value.toString().toFloat()
-                LAST_CONFLICT_RESOLUTION -> config.lastConflictResolution = value.toInt()
-                LAST_CONFLICT_APPLY_TO_ALL -> config.lastConflictApplyToAll = value.toBoolean()
-                FOLDER_THUMBNAIL_STYLE -> config.folderStyle = value.toInt()
-                FOLDER_MEDIA_COUNT -> config.showFolderMediaCount = value.toInt()
-                LIMIT_FOLDER_TITLE -> config.limitFolderTitle = value.toBoolean()
-                THUMBNAIL_SPACING -> config.thumbnailSpacing = value.toInt()
-                FILE_ROUNDED_CORNERS -> config.fileRoundedCorners = value.toBoolean()
-                SEARCH_ALL_FILES_BY_DEFAULT -> config.searchAllFilesByDefault = value.toBoolean()
-                ALBUM_COVERS -> {
-                    val existingCovers = config.parseAlbumCovers()
-                    val existingCoverPaths = existingCovers.map { it.path }.toMutableList() as ArrayList<String>
-
-                    val listType = object : TypeToken<List<AlbumCover>>() {}.type
-                    val covers = Gson().fromJson<ArrayList<AlbumCover>>(value.toString(), listType) ?: ArrayList(1)
-                    covers.filter { !existingCoverPaths.contains(it.path) && getDoesFilePathExist(it.tmb) }.forEach {
-                        existingCovers.add(it)
+            // One bad or out-of-range value must not abort the import or crash later launches
+            try {
+                when (key) {
+                    IS_USING_SHARED_THEME -> config.isUsingSharedTheme = value.toBoolean()
+                    TEXT_COLOR -> config.textColor = value.toInt()
+                    BACKGROUND_COLOR -> config.backgroundColor = value.toInt()
+                    PRIMARY_COLOR -> config.primaryColor = value.toInt()
+                    ACCENT_COLOR -> config.accentColor = value.toInt()
+                    APP_ICON_COLOR -> {
+                        if (getAppIconColors().contains(value.toInt())) {
+                            config.appIconColor = value.toInt()
+                            checkAppIconColor()
+                        }
                     }
 
-                    config.albumCovers = Gson().toJson(existingCovers)
+                    USE_ENGLISH -> config.useEnglish = value.toBoolean()
+                    WAS_USE_ENGLISH_TOGGLED -> config.wasUseEnglishToggled = value.toBoolean()
+                    WIDGET_BG_COLOR -> config.widgetBgColor = value.toInt()
+                    WIDGET_TEXT_COLOR -> config.widgetTextColor = value.toInt()
+                    DATE_FORMAT -> config.dateFormat = value.toString()
+                    USE_24_HOUR_FORMAT -> config.use24HourFormat = value.toBoolean()
+                    INCLUDED_FOLDERS -> {
+                        if (config.isHiddenPasswordProtectionOn) skippedProtectedKeys.add(key) else config.addIncludedFolders(value.toStringSet())
+                    }
+                    EXCLUDED_FOLDERS -> {
+                        if (config.isExcludedPasswordProtectionOn) skippedProtectedKeys.add(key) else config.addExcludedFolders(value.toStringSet())
+                    }
+                    SHOW_HIDDEN_MEDIA -> {
+                        if (config.isHiddenPasswordProtectionOn) skippedProtectedKeys.add(key) else config.showHiddenMedia = value.toBoolean()
+                    }
+                    FILE_LOADING_PRIORITY -> config.fileLoadingPriority = value.toInt().coerceIn(PRIORITY_SPEED, PRIORITY_VALIDITY)
+                    AUTOPLAY_VIDEOS -> config.autoplayVideos = value.toBoolean()
+                    REMEMBER_LAST_VIDEO_POSITION -> config.rememberLastVideoPosition = value.toBoolean()
+                    LOOP_VIDEOS -> config.loopVideos = value.toBoolean()
+                    OPEN_VIDEOS_ON_SEPARATE_SCREEN -> config.openVideosOnSeparateScreen = value.toBoolean()
+                    VIDEO_PLAYER_TYPE -> config.videoPlayerType = value.toInt().coerceIn(VIDEO_PLAYER_APP, VIDEO_PLAYER_SYSTEM)
+                    ALLOW_VIDEO_GESTURES -> config.allowVideoGestures = value.toBoolean()
+                    ANIMATE_GIFS -> config.animateGifs = value.toBoolean()
+                    CROP_THUMBNAILS -> config.cropThumbnails = value.toBoolean()
+                    SHOW_THUMBNAIL_VIDEO_DURATION -> config.showThumbnailVideoDuration = value.toBoolean()
+                    SHOW_THUMBNAIL_FILE_TYPES -> config.showThumbnailFileTypes = value.toBoolean()
+                    MARK_FAVORITE_ITEMS -> config.markFavoriteItems = value.toBoolean()
+                    SCROLL_HORIZONTALLY -> config.scrollHorizontally = value.toBoolean()
+                    ENABLE_PULL_TO_REFRESH -> config.enablePullToRefresh = value.toBoolean()
+                    MAX_BRIGHTNESS -> config.maxBrightness = value.toBoolean()
+                    ULTRA_HDR_RENDERING -> config.ultraHdrRendering = value.toBoolean()
+                    BLACK_BACKGROUND -> config.blackBackground = value.toBoolean()
+                    HIDE_SYSTEM_UI -> config.hideSystemUI = value.toBoolean()
+                    ALLOW_INSTANT_CHANGE -> config.allowInstantChange = value.toBoolean()
+                    KEEP_SCREEN_ON -> config.keepScreenOn = value.toBoolean()
+                    ALLOW_PHOTO_GESTURES -> config.allowPhotoGestures = value.toBoolean()
+                    ALLOW_DOWN_GESTURE -> config.allowDownGesture = value.toBoolean()
+                    ALLOW_ROTATING_WITH_GESTURES -> config.allowRotatingWithGestures = value.toBoolean()
+                    SHOW_NOTCH -> config.showNotch = value.toBoolean()
+                    SCREEN_ROTATION -> config.screenRotation = value.toInt().coerceIn(ROTATE_BY_SYSTEM_SETTING, ROTATE_BY_ASPECT_RATIO)
+                    ALLOW_ZOOMING_IMAGES -> config.allowZoomingImages = value.toBoolean()
+                    SHOW_HIGHEST_QUALITY -> config.showHighestQuality = value.toBoolean()
+                    ALLOW_ONE_TO_ONE_ZOOM -> config.allowOneToOneZoom = value.toBoolean()
+                    SHOW_EXTENDED_DETAILS -> config.showExtendedDetails = value.toBoolean()
+                    HIDE_EXTENDED_DETAILS -> config.hideExtendedDetails = value.toBoolean()
+                    EXTENDED_DETAILS -> config.extendedDetails = value.toInt()
+                    DELETE_EMPTY_FOLDERS -> config.deleteEmptyFolders = value.toBoolean()
+                    KEEP_LAST_MODIFIED -> config.keepLastModified = value.toBoolean()
+                    SKIP_DELETE_CONFIRMATION -> config.skipDeleteConfirmation = value.toBoolean()
+                    BOTTOM_ACTIONS -> config.bottomActions = value.toBoolean()
+                    VISIBLE_BOTTOM_ACTIONS -> config.visibleBottomActions = value.toInt()
+                    USE_RECYCLE_BIN -> config.useRecycleBin = value.toBoolean()
+                    SHOW_RECYCLE_BIN_AT_FOLDERS -> config.showRecycleBinAtFolders = value.toBoolean()
+                    SHOW_RECYCLE_BIN_LAST -> config.showRecycleBinLast = value.toBoolean()
+                    SORT_ORDER -> config.sorting = value.toInt()
+                    DIRECTORY_SORT_ORDER -> config.directorySorting = value.toInt()
+                    GROUP_BY -> config.groupBy = value.toInt()
+                    GROUP_DIRECT_SUBFOLDERS -> config.groupDirectSubfolders = value.toBoolean()
+                    PINNED_FOLDERS -> config.addPinnedFolders(value.toStringSet())
+                    DISPLAY_FILE_NAMES -> config.displayFileNames = value.toBoolean()
+                    FILTER_MEDIA -> config.filterMedia = value.toInt().also { require(it > 0) }
+                    DIR_COLUMN_CNT -> config.dirColumnCnt = value.toInt().coerceIn(1, MAX_COLUMN_COUNT)
+                    MEDIA_COLUMN_CNT -> config.mediaColumnCnt = value.toInt().coerceIn(1, MAX_COLUMN_COUNT)
+                    SHOW_ALL -> config.showAll = value.toBoolean()
+                    SHOW_WIDGET_FOLDER_NAME -> config.showWidgetFolderName = value.toBoolean()
+                    VIEW_TYPE_FILES -> config.viewTypeFiles = value.toInt()
+                    VIEW_TYPE_FOLDERS -> config.viewTypeFolders = value.toInt()
+                    SLIDESHOW_INTERVAL -> config.slideshowInterval = value.toInt().coerceIn(1, MAX_SLIDESHOW_INTERVAL)
+                    SLIDESHOW_INCLUDE_VIDEOS -> config.slideshowIncludeVideos = value.toBoolean()
+                    SLIDESHOW_INCLUDE_GIFS -> config.slideshowIncludeGIFs = value.toBoolean()
+                    SLIDESHOW_RANDOM_ORDER -> config.slideshowRandomOrder = value.toBoolean()
+                    SLIDESHOW_MOVE_BACKWARDS -> config.slideshowMoveBackwards = value.toBoolean()
+                    SLIDESHOW_LOOP -> config.loopSlideshow = value.toBoolean()
+                    LAST_EDITOR_CROP_ASPECT_RATIO -> config.lastEditorCropAspectRatio = value.toInt().coerceIn(ASPECT_RATIO_FREE, ASPECT_RATIO_NINE_SIXTEEN)
+                    LAST_EDITOR_CROP_OTHER_ASPECT_RATIO_X -> config.lastEditorCropOtherAspectRatioX = value.toString().toFloat().also { require(it.isFinite() && it > 0f) }
+                    LAST_EDITOR_CROP_OTHER_ASPECT_RATIO_Y -> config.lastEditorCropOtherAspectRatioY = value.toString().toFloat().also { require(it.isFinite() && it > 0f) }
+                    LAST_CONFLICT_RESOLUTION -> config.lastConflictResolution = value.toInt()
+                    LAST_CONFLICT_APPLY_TO_ALL -> config.lastConflictApplyToAll = value.toBoolean()
+                    FOLDER_THUMBNAIL_STYLE -> config.folderStyle = value.toInt().coerceIn(FOLDER_STYLE_SQUARE, FOLDER_STYLE_ROUNDED_CORNERS)
+                    FOLDER_MEDIA_COUNT -> config.showFolderMediaCount = value.toInt().coerceIn(FOLDER_MEDIA_CNT_LINE, FOLDER_MEDIA_CNT_NONE)
+                    LIMIT_FOLDER_TITLE -> config.limitFolderTitle = value.toBoolean()
+                    THUMBNAIL_SPACING -> config.thumbnailSpacing = value.toInt().coerceIn(0, MAX_THUMBNAIL_SPACING)
+                    FILE_ROUNDED_CORNERS -> config.fileRoundedCorners = value.toBoolean()
+                    SEARCH_ALL_FILES_BY_DEFAULT -> config.searchAllFilesByDefault = value.toBoolean()
+                    ALBUM_COVERS -> {
+                        val existingCovers = config.parseAlbumCovers()
+                        val existingCoverPaths = existingCovers.map { it.path }.toMutableList() as ArrayList<String>
+
+                        val listType = object : TypeToken<List<AlbumCover>>() {}.type
+                        val covers = Gson().fromJson<ArrayList<AlbumCover>>(value.toString(), listType) ?: ArrayList(1)
+                        covers.filter { !existingCoverPaths.contains(it.path) && getDoesFilePathExist(it.tmb) }.forEach {
+                            existingCovers.add(it)
+                        }
+
+                        config.albumCovers = Gson().toJson(existingCovers)
+                    }
                 }
+            } catch (e: Exception) {
+                skippedInvalidKeys.add(key)
             }
         }
 
         toast(if (configValues.size > 0) com.simplemobiletools.commons.R.string.settings_imported_successfully else com.simplemobiletools.commons.R.string.no_entries_for_importing)
         if (skippedProtectedKeys.isNotEmpty()) {
             toast(getString(R.string.settings_import_skipped_protected, skippedProtectedKeys.joinToString()))
+        }
+        if (skippedInvalidKeys.isNotEmpty()) {
+            showErrorToast(skippedInvalidKeys.joinToString())
         }
         runOnUiThread {
             setupSettingItems()

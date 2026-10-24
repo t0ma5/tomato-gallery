@@ -30,9 +30,9 @@ class ViewerMotion(
     private var downRawX = 0f
     private var downRawY = 0f
     private var downTranslation = 0f
-    private var lastRawY = 0f
-    private var lastTime = 0L
     private var velocityY = 0f
+    private var interrupted = false
+    private val velocity = FlingVelocity(activity)
     private var exiting = false
     val isExiting: Boolean get() = exiting
     private var lead: SpringAnimation? = null
@@ -69,24 +69,28 @@ class ViewerMotion(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 cancelSprings()
+                stopContentSprings()
+                interrupted = !isAtRest()
                 tracking = true
                 locked = false
                 downRawX = event.rawX
                 downRawY = event.rawY
                 downTranslation = content.translationY
-                lastRawY = event.rawY
-                lastTime = event.eventTime
                 velocityY = 0f
+                velocity.start(event)
                 return false
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
-                if (locked) settleBack()
+                if (locked || interrupted) settleBack()
                 tracking = false
                 locked = false
+                interrupted = false
+                velocity.clear()
                 return false
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!tracking) return false
+                velocity.move(event)
                 val dx = event.rawX - downRawX
                 val dy = event.rawY - downRawY
                 if (!locked) {
@@ -94,10 +98,6 @@ class ViewerMotion(
                     locked = true
                     content.parent?.requestDisallowInterceptTouchEvent(true)
                 }
-                val dt = (event.eventTime - lastTime).coerceAtLeast(1)
-                velocityY = (event.rawY - lastRawY) / dt * 1000f
-                lastRawY = event.rawY
-                lastTime = event.eventTime
                 val raw = downTranslation + dy
                 content.translationY = if (raw < 0f) {
                     -FluidMotion.rubberband(-raw, content.height.toFloat().coerceAtLeast(1f))
@@ -110,16 +110,25 @@ class ViewerMotion(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 val wasLocked = locked
+                val wasInterrupted = interrupted
                 tracking = false
                 locked = false
-                if (!wasLocked) return false
+                interrupted = false
+                if (!wasLocked) {
+                    velocity.clear()
+                    if (wasInterrupted) settleBack()
+                    return false
+                }
                 if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                    velocity.clear()
+                    velocityY = 0f
                     settleBack()
                     return true
                 }
+                velocityY = velocity.releaseY(event)
                 val projected = content.translationY + FluidMotion.project(velocityY)
                 val height = content.height.toFloat().coerceAtLeast(1f)
-                val dismiss = if (abs(velocityY) > 200f) velocityY > 0f else projected > height * 0.5f
+                val dismiss = if (velocity.isFling(velocityY)) velocityY > 0f else projected > height * 0.5f
                 if (dismiss) dismissFromDrag() else settleBack()
                 return true
             }
@@ -128,9 +137,11 @@ class ViewerMotion(
     }
 
     fun cancel() {
-        if (locked) settleBack()
+        if (locked || interrupted) settleBack()
         tracking = false
         locked = false
+        interrupted = false
+        velocity.clear()
     }
 
     /** @return true when the exit animation owns finish(). */
@@ -218,11 +229,12 @@ class ViewerMotion(
         finish: Boolean,
         onEnd: (() -> Unit)? = null,
     ) {
-        FluidMotion.spring(content, DynamicAnimation.TRANSLATION_X, translationX, damping, response)
-        FluidMotion.spring(content, DynamicAnimation.SCALE_X, scale, damping, response)
-        FluidMotion.spring(content, DynamicAnimation.SCALE_Y, scale, damping, response)
-        scrim?.let { FluidMotion.spring(it, DynamicAnimation.ALPHA, scrimAlpha, damping, response) }
-        val anim = FluidMotion.spring(content, DynamicAnimation.TRANSLATION_Y, translationY, damping, response, velocityY)
+        val reduced = FluidMotion.isReducedMotion(activity)
+        FluidMotion.spring(content, DynamicAnimation.TRANSLATION_X, translationX, damping, response, reduced = reduced)
+        FluidMotion.spring(content, DynamicAnimation.SCALE_X, scale, damping, response, reduced = reduced)
+        FluidMotion.spring(content, DynamicAnimation.SCALE_Y, scale, damping, response, reduced = reduced)
+        scrim?.let { FluidMotion.spring(it, DynamicAnimation.ALPHA, scrimAlpha, damping, response, reduced = reduced) }
+        val anim = FluidMotion.spring(content, DynamicAnimation.TRANSLATION_Y, translationY, damping, response, velocityY, reduced)
         if (!finish) return
         if (anim == null) {
             onEnd?.invoke()
@@ -243,5 +255,21 @@ class ViewerMotion(
     private fun cancelSprings() {
         lead?.cancel()
         lead = null
+    }
+
+    private fun stopContentSprings() {
+        FluidMotion.cancel(
+            content,
+            DynamicAnimation.TRANSLATION_X,
+            DynamicAnimation.TRANSLATION_Y,
+            DynamicAnimation.SCALE_X,
+            DynamicAnimation.SCALE_Y,
+        )
+        scrim?.let { FluidMotion.cancel(it, DynamicAnimation.ALPHA) }
+    }
+
+    private fun isAtRest(): Boolean {
+        return content.translationX == 0f && content.translationY == 0f &&
+            content.scaleX == 1f && content.scaleY == 1f && (scrim == null || scrim.alpha == 1f)
     }
 }

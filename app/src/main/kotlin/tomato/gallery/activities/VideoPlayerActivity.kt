@@ -56,6 +56,18 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
     private var mExoPlayer: ExoPlayer? = null
     private var mVideoSize = Point(0, 0)
     private var mTimerHandler = Handler(Looper.getMainLooper())
+    private var mVideoSurface: Surface? = null
+    private val mTimerRunnable = object : Runnable {
+        override fun run() {
+            if (mExoPlayer != null && !mIsDragged && mIsPlaying) {
+                mCurrTime = (mExoPlayer!!.currentPosition / 1000).toInt()
+                binding.bottomVideoTimeHolder.videoSeekbar.progress = mCurrTime
+                binding.bottomVideoTimeHolder.videoCurrTime.text = mCurrTime.getFormattedDuration()
+            }
+
+            mTimerHandler.postDelayed(this, 1000)
+        }
+    }
     private var mPlayWhenReadyHandler = Handler(Looper.getMainLooper())
 
     private var mIgnoreCloseDown = false
@@ -639,17 +651,8 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
     }
 
     private fun setupTimer() {
-        runOnUiThread(object : Runnable {
-            override fun run() {
-                if (mExoPlayer != null && !mIsDragged && mIsPlaying) {
-                    mCurrTime = (mExoPlayer!!.currentPosition / 1000).toInt()
-                    binding.bottomVideoTimeHolder.videoSeekbar.progress = mCurrTime
-                    binding.bottomVideoTimeHolder.videoCurrTime.text = mCurrTime.getFormattedDuration()
-                }
-
-                mTimerHandler.postDelayed(this, 1000)
-            }
-        })
+        mTimerHandler.removeCallbacks(mTimerRunnable)
+        mTimerHandler.post(mTimerRunnable)
     }
 
     private fun doSkip(forward: Boolean) {
@@ -773,6 +776,7 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
     }
 
     private fun releaseExoPlayer() {
+        releaseVideoSurface()
         mExoPlayer?.apply {
             stop()
             release()
@@ -806,10 +810,23 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
 
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
 
-    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture) = false
+    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+        releaseVideoSurface()
+        return true
+    }
 
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        mExoPlayer?.setVideoSurface(Surface(binding.videoSurface.surfaceTexture))
+        val player = mExoPlayer ?: return
+        mVideoSurface?.release()
+        val videoSurface = Surface(surface)
+        mVideoSurface = videoSurface
+        player.setVideoSurface(videoSurface)
+    }
+
+    private fun releaseVideoSurface() {
+        mExoPlayer?.clearVideoSurface()
+        mVideoSurface?.release()
+        mVideoSurface = null
     }
 
     override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}

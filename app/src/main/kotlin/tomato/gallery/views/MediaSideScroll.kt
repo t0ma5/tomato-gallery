@@ -31,6 +31,7 @@ class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(co
     private var mViewHeight = 0
     private var mIsBrightnessScroll = false
     private var mPassTouches = false
+    private var mReducedMotion = false
     private var dragThreshold = DRAG_THRESHOLD * context.resources.displayMetrics.density
 
     private var mSlideInfoText = ""
@@ -94,6 +95,7 @@ class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(co
                 mTouchDownY = event.rawY
                 mLastTouchY = event.rawY
                 mTouchDownTime = System.currentTimeMillis()
+                mReducedMotion = FluidMotion.isReducedMotion(context)
                 if (mIsBrightnessScroll) {
                     if (mTouchDownValue == -1) {
                         mTouchDownValue = getCurrentBrightness()
@@ -135,7 +137,7 @@ class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(co
                     mTouchDownValue = mTempBrightness
                 }
                 if (::slideInfoView.isInitialized) {
-                    FluidMotion.spring(slideInfoView, DynamicAnimation.TRANSLATION_Y, 0f, 1f, 0.25f)
+                    FluidMotion.spring(slideInfoView, DynamicAnimation.TRANSLATION_Y, 0f, 1f, 0.25f, reduced = mReducedMotion)
                 }
             }
         }
@@ -210,10 +212,11 @@ class MediaSideScroll(context: Context, attrs: AttributeSet) : RelativeLayout(co
         }
         if (over == 0f) {
             if (slideInfoView.translationY != 0f) {
-                FluidMotion.spring(slideInfoView, DynamicAnimation.TRANSLATION_Y, 0f, 1f, 0.2f)
+                FluidMotion.spring(slideInfoView, DynamicAnimation.TRANSLATION_Y, 0f, 1f, 0.2f, reduced = mReducedMotion)
             }
             return
         }
+        FluidMotion.cancel(slideInfoView, DynamicAnimation.TRANSLATION_Y)
         val travel = FluidMotion.rubberband(over, mViewHeight.toFloat().coerceAtLeast(1f)) * 0.2f
         slideInfoView.translationY = if (absolutePercent >= 100) -travel else travel
     }

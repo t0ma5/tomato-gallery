@@ -15,19 +15,24 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: write
-  actions: write
+# Each job asks only for what it needs; PR runs never get write access.
+permissions: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.apk.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Checkout Simple-Commons
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: SimpleMobileTools/Simple-Commons
           ref: 9e60e2479050b9dcc9d8fccdc240398a5f993184
@@ -68,14 +73,14 @@ jobs:
           grep -E 'gradlePlugins-agp|^kotlin =|ksp =|kotlinCompose|rtlViewpager|rtl-viewpager' Simple-Commons/gradle/libs.versions.toml
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           packages: platform-tools
 
@@ -116,6 +121,10 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleFossRelease --stacktrace --no-daemon
 
+      - name: Remove signing key
+        if: always()
+        run: rm -f app/keystore.jks keystore.properties
+
       - name: Name APK Tomato-Gallery_<version>-FOSS-<abi>
         if: github.event_name != 'pull_request'
         id: apk
@@ -138,17 +147,29 @@ jobs:
 
       - name: Upload APK artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Tomato-Gallery_${{ steps.apk.outputs.version }}
           path: dist/Tomato-Gallery_*.apk
           if-no-files-found: error
 
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v3
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: ${{ steps.apk.outputs.version }}
+          name: Tomato-Gallery_${{ needs.build.outputs.version }}
+          path: dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          name: ${{ needs.build.outputs.version }}
           files: dist/Tomato-Gallery_*.apk
           overwrite_files: true
           generate_release_notes: true
@@ -158,6 +179,7 @@ jobs:
             They can sit next to Play Store Simple Gallery Pro. The app name is Tomato Gallery. Launcher name is Gallery.
 
             Version 1.1 (versionCode 101). It does not update installs of tomato.simple.gallery. Those stay as a separate app until you uninstall them.
+            **Before you uninstall tomato.simple.gallery:** restore or empty its Recycle Bin and export its settings (Settings → Export settings). Uninstalling deletes its bin, tags and folder PINs.
             Version 1.0 replaced the 6.x line. Notes below roll up every earlier GitHub release. The 6.31.2 note is omitted on purpose.
 
             ## New in 1.1

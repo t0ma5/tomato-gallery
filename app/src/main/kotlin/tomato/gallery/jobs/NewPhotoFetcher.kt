@@ -8,7 +8,6 @@ import android.app.job.JobScheduler
 import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
-import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -79,21 +78,20 @@ class NewPhotoFetcher : JobService() {
                     val placeholders = ids.joinToString(" OR ") { "${Images.ImageColumns._ID} = ?" }
                     val args = ids.toTypedArray()
 
-                    var cursor: Cursor? = null
-                    try {
-                        val projection = arrayOf(Images.ImageColumns.DATA)
-                        val uris = arrayListOf(Images.Media.EXTERNAL_CONTENT_URI, Video.Media.EXTERNAL_CONTENT_URI)
-                        uris.forEach {
-                            cursor = contentResolver.query(it, projection, placeholders, args, null)
-                            while (cursor!!.moveToNext()) {
-                                val path = cursor!!.getStringValue(Images.ImageColumns.DATA)
-                                affectedFolderPaths.add(path.getParentPath())
-                                addPathToDB(path)
+                    val projection = arrayOf(Images.ImageColumns.DATA)
+                    val uris = arrayListOf(Images.Media.EXTERNAL_CONTENT_URI, Video.Media.EXTERNAL_CONTENT_URI)
+                    uris.forEach {
+                        // one cursor per query, each closed by use {} (reassigning a shared var leaked the images cursor)
+                        try {
+                            contentResolver.query(it, projection, placeholders, args, null)?.use { cursor ->
+                                while (cursor.moveToNext()) {
+                                    val path = cursor.getStringValue(Images.ImageColumns.DATA) ?: continue
+                                    affectedFolderPaths.add(path.getParentPath())
+                                    addPathToDB(path)
+                                }
                             }
+                        } catch (ignored: Exception) {
                         }
-                    } catch (ignored: Exception) {
-                    } finally {
-                        cursor?.close()
                     }
                 }
             }

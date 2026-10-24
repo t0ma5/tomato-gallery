@@ -74,7 +74,7 @@ fun Context.pathsMatchingTagQuery(query: String): Set<String> {
         return emptySet()
     }
     return try {
-        tagsDB.getPathsMatchingTag(query.trim()).map { it.lowercase() }.toHashSet()
+        tagsDB.getPathsMatchingTag(query.trim().escapeSqlLike()).map { it.lowercase() }.toHashSet()
     } catch (_: Exception) {
         emptySet()
     }
@@ -202,24 +202,33 @@ fun Context.getSortedDirectories(source: ArrayList<Directory>): ArrayList<Direct
         return newDirsOrdered
     }
 
+    // normalizeString() is slow (NFD + regex), compute each name key once instead of inside every compare
+    val nameKeys = if (sorting and SORT_BY_NAME != 0) {
+        val keys = java.util.IdentityHashMap<Directory, String>(dirs.size)
+        dirs.forEach {
+            if (it.sortValue.isEmpty()) {
+                it.sortValue = it.name.lowercase()
+            }
+            keys[it] = it.sortValue.normalizeString().lowercase()
+        }
+        keys
+    } else {
+        null
+    }
+    val alphanumericComparator = AlphanumericComparator()
+
     dirs.sortWith(Comparator { o1, o2 ->
         o1 as Directory
         o2 as Directory
 
         var result = when {
-            sorting and SORT_BY_NAME != 0 -> {
-                if (o1.sortValue.isEmpty()) {
-                    o1.sortValue = o1.name.lowercase()
-                }
-
-                if (o2.sortValue.isEmpty()) {
-                    o2.sortValue = o2.name.lowercase()
-                }
-
+            sorting and SORT_BY_NAME != 0 && nameKeys != null -> {
+                val key1 = nameKeys[o1] ?: o1.sortValue.normalizeString().lowercase()
+                val key2 = nameKeys[o2] ?: o2.sortValue.normalizeString().lowercase()
                 if (sorting and SORT_USE_NUMERIC_VALUE != 0) {
-                    AlphanumericComparator().compare(o1.sortValue.normalizeString().lowercase(), o2.sortValue.normalizeString().lowercase())
+                    alphanumericComparator.compare(key1, key2)
                 } else {
-                    o1.sortValue.normalizeString().lowercase().compareTo(o2.sortValue.normalizeString().lowercase())
+                    key1.compareTo(key2)
                 }
             }
 
@@ -496,12 +505,12 @@ fun Context.rescanFolderMediaSync(path: String) {
                 try {
                     mediaDB.insertAll(media)
 
+                    // compare by path: cached rows carry an id, fresh ones don't, so data class equality never matches
+                    val newPaths = media.mapTo(HashSet()) { it.path.lowercase() }
                     cached.forEach { thumbnailItem ->
-                        if (!newMedia.contains(thumbnailItem)) {
-                            val mediumPath = (thumbnailItem as? Medium)?.path
-                            if (mediumPath != null) {
-                                deleteDBPath(mediumPath)
-                            }
+                        val mediumPath = (thumbnailItem as? Medium)?.path
+                        if (mediumPath != null && !newPaths.contains(mediumPath.lowercase())) {
+                            deleteDBPath(mediumPath)
                         }
                     }
                 } catch (ignored: Exception) {
@@ -880,14 +889,137 @@ fun Context.removeInvalidDBDirectories(dirs: ArrayList<Directory>? = null) {
 }
 
 fun Context.updateDBMediaPath(oldPath: String, newPath: String) {
+    onPathMoved(oldPath, newPath)
+}
+
+/**
+ * A file was renamed or moved: carry its media row, favorite, tags and date taken over to [newPath].
+ * Call it on a background thread.
+ */
+fun Context.onPathMoved(oldPath: String, newPath: String) {
+    if (oldPath == newPath) {
+        return
+    }
     val newFilename = newPath.getFilenameFromPath()
     val newParentPath = newPath.getParentPath()
     try {
-        mediaDB.updateMedium(newFilename, newPath, newParentPath, oldPath)
-        favoritesDB.updateFavorite(newFilename, newPath, newParentPath, oldPath)
+        mediaDB.updateMedium(oldPath = oldPath, newParentPath = newParentPath, newFilename = newFilename, newFullPath = newPath)
+    } catch (ignored: Exception) {
+    }
+    try {
+        favoritesDB.updateFavorite(newFilename = newFilename, newFullPath = newPath, newParentPath = newParentPath, oldPath = oldPath)
+    } catch (ignored: Exception) {
+    }
+    try {
+        tagsDB.updatePath(oldPath = oldPath, newPath = newPath)
+    } catch (ignored: Exception) {
+    }
+    try {
+        dateTakensDB.updatePath(oldPath = oldPath, newPath = newPath, newFilename = newFilename, newParentPath = newParentPath)
     } catch (ignored: Exception) {
     }
 }
+
+/**
+ * A file was deleted for good (not moved to the app's recycle bin). Drops its media row, favorite,
+ * tags and date taken, so they don't re-attach to a later file with the same path.
+ * Rows are kept while the file still exists, e.g. when the delete failed. Call it on a background thread.
+ */
+fun Context.onPathDeleted(path: String) {
+    deleteDBPath(path)
+    if (path.startsWith(recycleBinPath)) {
+        val binKey = path.replaceFirst(recycleBinPath, RECYCLE_BIN)
+        try {
+            tagsDB.deleteTagsForPath(binKey)
+        } catch (ignored: Exception) {
+        }
+        return
+    }
+    if (getDoesFilePathExist(path)) {
+        return
+    }
+    try {
+        favoritesDB.deleteFavoritePath(path)
+    } catch (ignored: Exception) {
+    }
+    try {
+        tagsDB.deleteTagsForPath(path)
+    } catch (ignored: Exception) {
+    }
+    try {
+        dateTakensDB.deletePath(path)
+    } catch (ignored: Exception) {
+    }
+}
+
+/**
+ * A folder was renamed or moved: carry over the rows of every file and subfolder inside it
+ * (media, favorites, tags, date takens, cached subdirectories) and the folder lock prefs.
+ * The cached directory row of the folder itself is left to the caller. Call it on a background thread.
+ */
+fun Context.onFolderMoved(oldFolder: String, newFolder: String) {
+    val oldPrefix = "${oldFolder.trimEnd('/')}/"
+    val newPrefix = "${newFolder.trimEnd('/')}/"
+    if (oldPrefix == newPrefix || oldPrefix == "/") {
+        return
+    }
+    try {
+        mediaDB.updateFolderPrefix(oldPrefix, newPrefix)
+    } catch (ignored: Exception) {
+    }
+    try {
+        favoritesDB.updateFolderPrefix(oldPrefix, newPrefix)
+    } catch (ignored: Exception) {
+    }
+    try {
+        tagsDB.updateFolderPrefix(oldPrefix, newPrefix)
+    } catch (ignored: Exception) {
+    }
+    try {
+        dateTakensDB.updateFolderPrefix(oldPrefix, newPrefix)
+    } catch (ignored: Exception) {
+    }
+    try {
+        directoryDB.updateFolderPrefix(oldPrefix, newPrefix)
+    } catch (ignored: Exception) {
+    }
+    moveFolderProtection(oldFolder.trimEnd('/'), newFolder.trimEnd('/'))
+}
+
+// Folder locks are stored per exact path (BaseConfig "protected_folder_type_<path>"), move them with the folder.
+fun Context.moveFolderProtection(oldFolder: String, newFolder: String) {
+    try {
+        val lockedPaths = getSharedPrefs().all.keys
+            .filter { it.startsWith(PROTECTED_FOLDER_TYPE) }
+            .map { it.removePrefix(PROTECTED_FOLDER_TYPE) }
+            .filter { it == oldFolder || it.startsWith("$oldFolder/") }
+
+        val cfg = config
+        lockedPaths.forEach { lockedPath ->
+            if (!cfg.isFolderProtected(lockedPath)) {
+                return@forEach
+            }
+            val movedPath = newFolder + lockedPath.substring(oldFolder.length)
+            cfg.addFolderProtection(movedPath, cfg.getFolderProtectionHash(lockedPath), cfg.getFolderProtectionType(lockedPath))
+            cfg.removeFolderProtection(lockedPath)
+        }
+    } catch (ignored: Exception) {
+    }
+}
+
+fun Context.getMediumTypeFromPath(path: String): Int {
+    return when {
+        path.isVideoFast() -> TYPE_VIDEOS
+        path.isGif() -> TYPE_GIFS
+        path.isRawFast() -> TYPE_RAWS
+        path.isSvg() -> TYPE_SVGS
+        path.isPortrait() -> TYPE_PORTRAITS
+        else -> TYPE_IMAGES
+    }
+}
+
+// Escapes the LIKE wildcards with a backslash, for queries that use ESCAPE '\'
+fun String.escapeSqlLike(): String = replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 fun Context.updateDBDirectory(directory: Directory) {
     try {
@@ -1041,14 +1173,7 @@ fun Context.addPathToDB(path: String) {
             return@ensureBackgroundThread
         }
 
-        val type = when {
-            path.isVideoFast() -> TYPE_VIDEOS
-            path.isGif() -> TYPE_GIFS
-            path.isRawFast() -> TYPE_RAWS
-            path.isSvg() -> TYPE_SVGS
-            path.isPortrait() -> TYPE_PORTRAITS
-            else -> TYPE_IMAGES
-        }
+        val type = getMediumTypeFromPath(path)
 
         try {
             val isFavorite = favoritesDB.isFavorite(path)

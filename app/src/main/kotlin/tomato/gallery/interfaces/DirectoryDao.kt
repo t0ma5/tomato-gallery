@@ -27,6 +27,10 @@ interface DirectoryDao {
     @Query("UPDATE directories SET thumbnail = :thumbnail, filename = :name, path = :newPath WHERE path = :oldPath COLLATE NOCASE")
     fun updateDirectoryAfterRename(thumbnail: String, name: String, newPath: String, oldPath: String)
 
+    // :oldPrefix and :newPrefix end with '/', only folders strictly inside the old folder are moved
+    @Query("UPDATE OR REPLACE directories SET path = :newPrefix || substr(path, length(:oldPrefix) + 1), thumbnail = CASE WHEN substr(thumbnail, 1, length(:oldPrefix)) = :oldPrefix COLLATE NOCASE THEN :newPrefix || substr(thumbnail, length(:oldPrefix) + 1) ELSE thumbnail END WHERE substr(path, 1, length(:oldPrefix)) = :oldPrefix COLLATE NOCASE")
+    fun updateFolderPrefix(oldPrefix: String, newPrefix: String): Int
+
     @Query("DELETE FROM directories WHERE path = \'$RECYCLE_BIN\' COLLATE NOCASE")
     fun deleteRecycleBin()
 

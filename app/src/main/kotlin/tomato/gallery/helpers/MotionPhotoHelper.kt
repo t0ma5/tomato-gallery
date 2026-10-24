@@ -42,16 +42,22 @@ object MotionPhotoHelper {
     private val ELEM = Regex("""<([A-Za-z0-9]+:[A-Za-z0-9]+)>([^<]+)</""")
     private val LATIN_1: Charset = Charset.forName("ISO-8859-1")
 
+    private const val PROBE_BYTES = 256 * 1024
+    private const val EXTRACTION_MAX_AGE_MS = 5 * 60 * 1000L
+
     fun parseInfo(context: Context, uri: Uri): MotionPhotoInfo? {
+        val probe = readProbe(context, uri) ?: return null
+        return parseInfo(context, uri, probe)
+    }
+
+    /** Uses an already-read file head (see [readProbe]) so callers can share one open for all XMP checks. */
+    fun parseInfo(context: Context, uri: Uri, probe: ByteArray, text: String = probeText(probe)): MotionPhotoInfo? {
         return try {
-            if (!looksLikeJpegOrHeic(context, uri)) {
+            if (!looksLikeJpegOrHeic(probe)) {
                 return null
             }
 
-            val xmpResult = context.contentResolver.openInputStream(uri)?.use { stream ->
-                val text = readAsciiProbe(stream)
-                resolveInfo(parseXmpProperties(text), parseContainerItems(text))
-            }
+            val xmpResult = resolveInfo(parseXmpProperties(text), parseContainerItems(text))
             if (xmpResult != null) {
                 return xmpResult
             }
@@ -64,6 +70,38 @@ object MotionPhotoHelper {
     }
 
     fun parseInfo(context: Context, path: String): MotionPhotoInfo? = parseInfo(context, pathToUri(path))
+
+    fun readProbe(context: Context, uri: Uri, maxBytes: Int = PROBE_BYTES): ByteArray? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                val buf = ByteArray(maxBytes)
+                var total = 0
+                while (total < maxBytes) {
+                    val n = stream.read(buf, total, maxBytes - total)
+                    if (n <= 0) break
+                    total += n
+                }
+                if (total == maxBytes) buf else buf.copyOf(total)
+            }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    fun probeText(probe: ByteArray): String = String(probe, LATIN_1)
+
+    /** Removes extracted clips left behind by a killed process. Recent files may still be playing, so they stay. */
+    fun clearStaleExtractions(context: Context) {
+        try {
+            val cutoff = System.currentTimeMillis() - EXTRACTION_MAX_AGE_MS
+            File(context.cacheDir, "motion_photos").listFiles()?.forEach { file ->
+                if (file.isFile && file.lastModified() < cutoff) {
+                    file.delete()
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
 
     fun resolveInfo(properties: Map<String, String>, containerItems: List<Map<String, String>> = emptyList()): MotionPhotoInfo? {
         if (properties[KEY_MOTION_PHOTO] != "1" && properties[KEY_MICRO_VIDEO] != "1") {
@@ -282,33 +320,8 @@ object MotionPhotoHelper {
         }.toList()
     }
 
-    private fun readAsciiProbe(stream: InputStream, maxBytes: Int = 256 * 1024): String {
-        val buf = ByteArray(DEFAULT_BUFFER_SIZE)
-        val out = StringBuilder()
-        var total = 0
-        while (total < maxBytes) {
-            val n = stream.read(buf, 0, minOf(buf.size, maxBytes - total))
-            if (n <= 0) break
-            out.append(String(buf, 0, n, LATIN_1))
-            total += n
-        }
-        return out.toString()
-    }
-
-    private fun looksLikeJpegOrHeic(context: Context, uri: Uri): Boolean {
-        val header = try {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                val buf = ByteArray(12)
-                var read = 0
-                while (read < buf.size) {
-                    val n = stream.read(buf, read, buf.size - read)
-                    if (n < 0) break
-                    read += n
-                }
-                if (read < 12) return false
-                buf
-            } ?: return false
-        } catch (_: Throwable) {
+    private fun looksLikeJpegOrHeic(header: ByteArray): Boolean {
+        if (header.size < 12) {
             return false
         }
         if ((header[0].toInt() and 0xFF) == 0xFF &&
@@ -408,31 +421,36 @@ object MotionPhotoHelper {
 
     private fun scanSamsungMarker(input: InputStream): SamsungMarkerScan {
         val marker = SAMSUNG_MARKER
-        val window = ByteArray(marker.size)
+        val overlap = marker.size - 1
+        val buffer = ByteArray(64 * 1024 + overlap)
+        val first = marker[0]
+        var carried = 0
         var total = 0L
-        var count = 0
-        var cursor = 0
         var lastEnd: Long? = null
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         while (true) {
-            val read = input.read(buffer)
-            if (read < 0) break
-            for (bufferIndex in 0 until read) {
-                window[cursor] = buffer[bufferIndex]
-                cursor = (cursor + 1) % marker.size
-                count = (count + 1).coerceAtMost(marker.size)
-                total++
-                if (count == marker.size) {
+            val read = input.read(buffer, carried, buffer.size - carried)
+            if (read <= 0) break
+            val filled = carried + read
+            val bufferStart = total - carried
+            var i = 0
+            val lastStart = filled - marker.size
+            while (i <= lastStart) {
+                if (buffer[i] == first) {
                     var matches = true
-                    for (index in marker.indices) {
-                        if (window[(cursor + index) % marker.size] != marker[index]) {
+                    for (index in 1 until marker.size) {
+                        if (buffer[i + index] != marker[index]) {
                             matches = false
                             break
                         }
                     }
-                    if (matches) lastEnd = total
+                    if (matches) lastEnd = bufferStart + i + marker.size
                 }
+                i++
             }
+            total += read
+            val keep = minOf(overlap, filled)
+            System.arraycopy(buffer, filled - keep, buffer, 0, keep)
+            carried = keep
         }
         return SamsungMarkerScan(total, lastEnd)
     }

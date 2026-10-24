@@ -20,32 +20,59 @@ import com.simplemobiletools.commons.helpers.isPiePlus
 import tomato.gallery.R
 import tomato.gallery.extensions.addPathToDB
 import tomato.gallery.extensions.config
-import tomato.gallery.extensions.deleteDBPath
+import tomato.gallery.extensions.onPathDeleted
 import tomato.gallery.extensions.updateDirectoryPath
 import tomato.gallery.helpers.AppLock
 
 open class SimpleActivity : BaseSimpleActivity() {
     private var appLockPromptShown = false
+    private var usesAppLock = false
+    private var isUnlockedInForeground = false
+    private val pendingUnlockCallbacks = ArrayList<() -> Unit>()
 
     protected fun ensureAppUnlocked(onUnlocked: () -> Unit): Boolean {
+        usesAppLock = true
         if (!config.isAppPasswordProtectionOn || AppLock.isUnlocked()) {
             onUnlocked()
             return true
         }
+        // One prompt at a time: later callers (e.g. a subclass onResume after the base re-check) wait for its result
+        pendingUnlockCallbacks.add(onUnlocked)
         if (appLockPromptShown) {
             return false
         }
         appLockPromptShown = true
         handleAppPasswordProtection { success ->
             appLockPromptShown = false
+            val callbacks = ArrayList(pendingUnlockCallbacks)
+            pendingUnlockCallbacks.clear()
             if (success) {
                 AppLock.markUnlocked()
-                onUnlocked()
+                isUnlockedInForeground = true
+                callbacks.forEach { it() }
             } else {
                 finish()
             }
         }
         return false
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Screens that checked the lock once must check again when brought back after the grace period ran out
+        isUnlockedInForeground = config.isAppPasswordProtectionOn && AppLock.isUnlocked()
+        if (usesAppLock && !appLockPromptShown && config.isAppPasswordProtectionOn && !AppLock.isUnlocked()) {
+            ensureAppUnlocked {}
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // The grace period counts from when the user last left an unlocked screen, not from the unlock itself
+        if (isUnlockedInForeground && config.isAppPasswordProtectionOn) {
+            AppLock.markUnlocked()
+        }
+        isUnlockedInForeground = false
     }
 
     val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
@@ -94,7 +121,7 @@ open class SimpleActivity : BaseSimpleActivity() {
             tomato.gallery.extensions.pendingSystemTrashPaths = null
             if (ok && paths != null) {
                 ensureBackgroundThread {
-                    paths.forEach { deleteDBPath(it) }
+                    paths.forEach { onPathDeleted(it) }
                     runOnUiThread { cb?.invoke(true) }
                 }
             } else {

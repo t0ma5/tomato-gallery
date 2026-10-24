@@ -62,6 +62,7 @@ import tomato.gallery.helpers.*
 import tomato.gallery.models.FilterItem
 import com.zomato.photofilters.imageprocessors.Filter
 import java.io.*
+import java.util.concurrent.Executors
 import kotlin.math.max
 
 class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener {
@@ -85,6 +86,8 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
 
         private const val CROP_ROTATE_NONE = 0
         private const val CROP_ROTATE_ASPECT_RATIO = 1
+
+        private val ENCODABLE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
     }
 
 
@@ -112,6 +115,12 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
     private var overwriteRequested = false
     private var hasUnsavedEdits = false
     private val editorDecodeSize = 4096
+    private var trustedRealPath: String? = null
+    private val filterPreviewExecutor = Executors.newSingleThreadExecutor()
+    @Volatile
+    private var filterPreviewGeneration = 0
+    private var filterPreviewBase: Bitmap? = null
+    private var filterPreviewBaseSource: java.lang.ref.WeakReference<Bitmap>? = null
     private val binding by viewBinding(ActivityEditBinding::inflate)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -183,6 +192,12 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        filterPreviewGeneration++
+        filterPreviewExecutor.shutdownNow()
+    }
+
     private fun setupOptionsMenu() {
         styleEditorToolbar()
         binding.editorToolbar.setOnMenuItemClickListener { menuItem ->
@@ -222,10 +237,20 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
             return
         }
 
-        if (intent.extras?.containsKey(REAL_FILE_PATH) == true) {
-            val realPath = intent.extras!!.getString(REAL_FILE_PATH)
+        // The editor is exported: REAL_FILE_PATH is honoured only for our own launches,
+        // and untrusted callers can't point it at private or PIN-protected files.
+        val trusted = intent.isTrustedInternal()
+        trustedRealPath = if (trusted) intent.getStringExtra(REAL_FILE_PATH)?.takeIf { it.isNotEmpty() } else null
+        if (!trusted && !isAllowedUntrustedInput(uri!!)) {
+            toast(R.string.invalid_image_path)
+            finish()
+            return
+        }
+
+        val realPath = trustedRealPath
+        if (realPath != null) {
             uri = when {
-                isPathOnOTG(realPath!!) -> uri
+                isPathOnOTG(realPath) -> uri
                 realPath.startsWith("file:/") -> Uri.parse(realPath)
                 else -> Uri.fromFile(File(realPath))
             }
@@ -235,10 +260,13 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
             }
         }
 
-        saveUri = when {
-            intent.extras?.containsKey(MediaStore.EXTRA_OUTPUT) == true && intent.extras!!.get(MediaStore.EXTRA_OUTPUT) is Uri -> intent.extras!!.get(MediaStore.EXTRA_OUTPUT) as Uri
-            else -> uri!!
+        val extraOutput = if (intent.extras?.containsKey(MediaStore.EXTRA_OUTPUT) == true) intent.extras!!.get(MediaStore.EXTRA_OUTPUT) as? Uri else null
+        if (extraOutput != null && !isAllowedOutputUri(extraOutput, trusted)) {
+            toast(R.string.unknown_file_location)
+            finish()
+            return
         }
+        saveUri = extraOutput ?: uri!!
 
         isCropIntent = intent.extras?.get(CROP) == "true"
         if (isCropIntent) {
@@ -246,7 +274,7 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
             (binding.bottomEditorCropRotateActions.root.layoutParams as RelativeLayout.LayoutParams).addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, 1)
         }
 
-        val hideOverwrite = isCropIntent || (intent.extras?.containsKey(MediaStore.EXTRA_OUTPUT) == true)
+        val hideOverwrite = isCropIntent || (intent.extras?.containsKey(MediaStore.EXTRA_OUTPUT) == true) || !canOverwriteInPlace()
         binding.editorToolbar.menu.findItem(R.id.overwrite_original)?.isVisible = !hideOverwrite
 
         loadDefaultImageView()
@@ -266,6 +294,127 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         updateAspectRatio(config.lastEditorCropAspectRatio)
         binding.cropImageView.guidelines = CropImageView.Guidelines.ON
         binding.bottomAspectRatios.root.beVisible()
+    }
+
+    private fun isOwnAuthority(target: Uri): Boolean {
+        val authority = target.authority ?: return false
+        return authority == BuildConfig.APPLICATION_ID || authority.startsWith("${BuildConfig.APPLICATION_ID}.")
+    }
+
+    private fun isInsideAppPrivateDirs(path: String): Boolean {
+        if (path.isEmpty()) {
+            return false
+        }
+        val target = try {
+            File(path).canonicalPath
+        } catch (_: Exception) {
+            return true
+        }
+        val roots = ArrayList<String>()
+        applicationInfo.dataDir?.let { roots.add(it) }
+        filesDir?.parentFile?.let { roots.add(it.path) }
+        cacheDir?.let { roots.add(it.path) }
+        externalCacheDir?.parentFile?.let { roots.add(it.path) }
+        getExternalFilesDir(null)?.parentFile?.let { roots.add(it.path) }
+        createDeviceProtectedStorageContext().dataDir?.let { roots.add(it.path) }
+        return roots.any { root ->
+            val canonicalRoot = try {
+                File(root).canonicalPath
+            } catch (_: Exception) {
+                root
+            }.trimEnd('/')
+            canonicalRoot.isNotEmpty() && (target == canonicalRoot || target.startsWith("$canonicalRoot/"))
+        }
+    }
+
+    private fun isForbiddenUntrustedPath(path: String): Boolean {
+        return isInsideAppPrivateDirs(path) || config.isPathInProtectedFolder(path)
+    }
+
+    private fun isAllowedUntrustedInput(input: Uri): Boolean {
+        val path = when (input.scheme) {
+            "file" -> input.path
+            "content" -> {
+                if (isOwnAuthority(input)) {
+                    return false
+                }
+                applicationContext.getRealPathFromURI(input)
+            }
+            else -> null
+        }
+        return path.isNullOrEmpty() || !isForbiddenUntrustedPath(path)
+    }
+
+    private fun isAllowedOutputUri(output: Uri, trusted: Boolean): Boolean {
+        if (output.scheme != "content" || isOwnAuthority(output)) {
+            return false
+        }
+        val path = applicationContext.getRealPathFromURI(output)
+        if (path.isNullOrEmpty()) {
+            return true
+        }
+        return if (trusted) !isInsideAppPrivateDirs(path) else !isForbiddenUntrustedPath(path)
+    }
+
+    private fun isEncodableName(name: String?): Boolean {
+        val extension = name?.substringAfterLast('.', "")?.lowercase() ?: return false
+        return extension in ENCODABLE_EXTENSIONS
+    }
+
+    /** Replaces an extension Bitmap.compress can't produce (heic, avif, gif...) with a free `.jpg` name. */
+    private fun encodablePath(path: String): String {
+        val name = path.substringAfterLast('/')
+        if (isEncodableName(name)) {
+            return path
+        }
+        val dot = name.lastIndexOf('.')
+        val base = if (dot > 0) path.substring(0, path.length - name.length + dot) else path
+        var candidate = "$base.jpg"
+        var n = 1
+        while (File(candidate).exists()) {
+            candidate = "${base}_$n.jpg"
+            n++
+        }
+        return candidate
+    }
+
+    private fun mimeFormat(mime: String?): CompressFormat? {
+        return when (mime?.lowercase()) {
+            "image/jpeg", "image/jpg" -> CompressFormat.JPEG
+            "image/png" -> CompressFormat.PNG
+            "image/webp" -> CompressFormat.WEBP
+            else -> null
+        }
+    }
+
+    private fun contentUriFormat(target: Uri): CompressFormat {
+        val name = applicationContext.getFilenameFromContentUri(target)
+        if (isEncodableName(name)) {
+            return name!!.getCompressionFormat()
+        }
+        return mimeFormat(contentResolver.getType(target)) ?: CompressFormat.JPEG
+    }
+
+    /** Overwrite writes Bitmap.compress output, so only jpg, png and webp targets can be replaced in place. */
+    private fun canOverwriteInPlace(): Boolean {
+        if (!::saveUri.isInitialized) {
+            return false
+        }
+        val isPlainContent = saveUri.scheme == "content" && applicationContext.getRealPathFromURI(saveUri).isNullOrEmpty()
+        val name = if (isPlainContent) {
+            applicationContext.getFilenameFromContentUri(saveUri)
+        } else {
+            overwritePath()?.substringAfterLast('/')
+        }
+        if (name != null && name.contains('.')) {
+            return isEncodableName(name)
+        }
+        val mime = try {
+            contentResolver.getType(saveUri)
+        } catch (_: Exception) {
+            null
+        } ?: return true
+        return mimeFormat(mime) != null
     }
 
     private fun loadDefaultImageView() {
@@ -513,9 +662,14 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
     @TargetApi(Build.VERSION_CODES.N)
     private fun startSaveFlow(overwrite: Boolean) {
         overwriteRequested = overwrite
+        if (overwrite && !canOverwriteInPlace()) {
+            // e.g. HEIC/AVIF/GIF: never write JPEG bytes under the original name.
+            toast(R.string.editor_overwrite_unsupported_format)
+            overwriteRequested = false
+        }
         setOldExif()
         if (rotationOnlyDegrees() != 0) {
-            saveRotationOnly(overwrite)
+            saveRotationOnly(overwriteRequested)
             return
         }
         when {
@@ -595,7 +749,7 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
 
     private fun saveFilteredImage() {
         val currentFilter = getFiltersAdapter()?.getCurrentFilter()?.filter ?: return
-        freeMemory()
+        // Don't clear the views here: the user can still cancel Save-as and keep editing.
         ensureBackgroundThread {
             try {
                 val original = getSourceBitmapForFilter()
@@ -627,13 +781,13 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         }
 
         if (saveUri.scheme == "file") {
-            SaveAsDialog(this, saveUri.path!!, true) {
-                saveBitmapToFile(bitmap, it, showSavingToast)
+            SaveAsDialog(this, encodablePath(saveUri.path!!), true) {
+                saveBitmapToFile(bitmap, encodablePath(it), showSavingToast)
             }
         } else if (saveUri.scheme == "content") {
             val filePathGetter = getNewFilePath()
-            SaveAsDialog(this, filePathGetter.first, filePathGetter.second) {
-                saveBitmapToFile(bitmap, it, showSavingToast)
+            SaveAsDialog(this, encodablePath(filePathGetter.first), filePathGetter.second) {
+                saveBitmapToFile(bitmap, encodablePath(it), showSavingToast)
             }
         } else {
             toast(R.string.unknown_file_location)
@@ -651,31 +805,77 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         if (showSavingToast) {
             toast(com.simplemobiletools.commons.R.string.saving)
         }
+        val width = resizeWidth
+        val height = resizeHeight
         ensureBackgroundThread {
             try {
-                val profile = jpegSaveProfile()
+                // Encode fully before "wt" truncates the destination.
+                val bytes = encodeForSave(bitmap, contentUriFormat(uri), width, height)
                 contentResolver.openOutputStream(uri, "wt")?.use { out ->
-                    val format = applicationContext.getFilenameFromContentUri(uri)?.getCompressionFormat()
-                        ?: CompressFormat.JPEG
-                    writeCompressed(bitmap, format, profile, out)
-                } ?: throw IllegalStateException("Cannot open $uri")
+                    out.write(bytes)
+                } ?: throw IOException("Cannot open $uri")
                 writeExif(oldExif, uri)
                 runOnUiThread {
                     setResult(Activity.RESULT_OK, intent)
                     toast(com.simplemobiletools.commons.R.string.file_saved)
                     finish()
                 }
-            } catch (e: Exception) {
-                showErrorToast(e)
+            } catch (e: Throwable) {
+                reportSaveFailure(e)
             }
         }
     }
 
-    private fun freeMemory() {
-        binding.defaultImageView.setImageResource(0)
-        binding.cropImageView.setImageBitmap(null)
-        binding.bottomEditorFilterActions.bottomActionsFilterList.adapter = null
-        binding.bottomEditorFilterActions.bottomActionsFilterList.beGone()
+    private fun reportSaveFailure(e: Throwable) {
+        when (e) {
+            is OutOfMemoryError -> toast(com.simplemobiletools.commons.R.string.out_of_memory_error)
+            is Exception -> showErrorToast(e)
+            else -> toast(R.string.image_editing_failed)
+        }
+    }
+
+    private fun encodeForSave(bitmap: Bitmap, format: CompressFormat, width: Int, height: Int): ByteArray {
+        val image = if (width > 0 && height > 0) {
+            Bitmap.createScaledBitmap(bitmap, width, height, true)
+        } else {
+            bitmap
+        }
+        try {
+            val out = ByteArrayOutputStream()
+            writeCompressed(image, format, jpegSaveProfile(), out)
+            val bytes = out.toByteArray()
+            if (bytes.isEmpty()) {
+                throw IOException("Encoding failed")
+            }
+            return bytes
+        } finally {
+            if (image !== bitmap && !image.isRecycled) {
+                image.recycle()
+            }
+        }
+    }
+
+    /** Writes to a sibling temp file, fsyncs it and renames it over [dest], so a failure never leaves a truncated original. */
+    private fun writeBytesAtomic(dest: File, bytes: ByteArray): Boolean {
+        val parent = dest.parentFile ?: return false
+        val dot = dest.name.lastIndexOf('.')
+        val suffix = if (dot > 0) dest.name.substring(dot) else ""
+        val tmp = File(parent, ".${dest.name}.${System.currentTimeMillis()}.edit$suffix")
+        return try {
+            FileOutputStream(tmp).use { out ->
+                out.write(bytes)
+                out.fd.sync()
+            }
+            if (tmp.length() != bytes.size.toLong() || !tmp.renameTo(dest)) {
+                tmp.delete()
+                false
+            } else {
+                true
+            }
+        } catch (_: Exception) {
+            tmp.delete()
+            false
+        }
     }
 
     @TargetApi(Build.VERSION_CODES.N)
@@ -693,89 +893,104 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
     }
 
     private fun shareImage() {
-        ensureBackgroundThread {
+        // View state (overlay compositing, adapters, visibility) is read on the UI
+        // thread; only filtering and encoding run in the background.
+        try {
             when {
+                currPrimaryAction == PRIMARY_ACTION_ADJUST && binding.defaultImageView.isVisible() -> {
+                    ensureBackgroundThread {
+                        try {
+                            val bitmap = currentAdjustBitmap()
+                            if (bitmap == null) {
+                                toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+                            } else {
+                                shareBitmapInBackground(bitmap)
+                            }
+                        } catch (e: Throwable) {
+                            reportSaveFailure(e)
+                        }
+                    }
+                }
+
                 binding.defaultImageView.isVisible() -> {
                     val currentFilter = getFiltersAdapter()?.getCurrentFilter()
-                    if (currentFilter == null) {
-                        toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
-                        return@ensureBackgroundThread
+                    ensureBackgroundThread {
+                        try {
+                            val bitmap = if (currentFilter == null) {
+                                usableWorkingBitmap() ?: getSourceBitmapForFilter()
+                            } else {
+                                getSourceBitmapForFilter().also { currentFilter.filter.processFilter(it) }
+                            }
+                            shareBitmapInBackground(bitmap)
+                        } catch (e: Throwable) {
+                            reportSaveFailure(e)
+                        }
                     }
-
-                    val originalBitmap = getSourceBitmapForFilter()
-                    currentFilter.filter.processFilter(originalBitmap)
-                    shareBitmap(originalBitmap)
                 }
 
                 binding.cropImageView.isVisible() -> {
                     isSharingBitmap = true
-                    runOnUiThread {
-                        binding.cropImageView.croppedImageAsync()
-                    }
+                    binding.cropImageView.croppedImageAsync()
                 }
 
                 binding.editorDrawCanvas.isVisible() -> shareBitmap(
                     if (binding.editorDrawCanvas.hasDrawing()) {
                         binding.editorDrawCanvas.getBitmap(usableWorkingBitmap())
                     } else {
-                        usableWorkingBitmap() ?: return@ensureBackgroundThread
+                        usableWorkingBitmap() ?: return
                     }
                 )
+
                 binding.editorOverlayView.isVisible() -> shareBitmap(
                     if (binding.editorOverlayView.hasOverlays()) {
                         binding.editorOverlayView.getBitmap(usableWorkingBitmap())
                     } else {
-                        usableWorkingBitmap() ?: return@ensureBackgroundThread
+                        usableWorkingBitmap() ?: return
                     }
                 )
-                currPrimaryAction == PRIMARY_ACTION_ADJUST -> {
-                    val bitmap = currentAdjustBitmap()
-                    if (bitmap == null) {
-                        toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
-                    } else {
-                        shareBitmap(bitmap)
-                    }
-                }
             }
+        } catch (e: Throwable) {
+            reportSaveFailure(e)
         }
     }
 
-    private fun getTempImagePath(bitmap: Bitmap, callback: (path: String?) -> Unit) {
-        val bytes = ByteArrayOutputStream()
-        bitmap.compress(CompressFormat.PNG, 0, bytes)
-
+    /** Writes [bitmap] as PNG into the share cache. The name always ends in `.png` to match the data. */
+    private fun writeShareTempFile(bitmap: Bitmap): String? {
         val folder = File(cacheDir, TEMP_FOLDER_NAME)
-        if (!folder.exists()) {
-            if (!folder.mkdir()) {
-                callback(null)
-                return
-            }
+        if (!folder.exists() && !folder.mkdirs()) {
+            return null
         }
 
-        val filename = applicationContext.getFilenameFromContentUri(saveUri) ?: "tmp-${System.currentTimeMillis()}.jpg"
-        val newPath = "$folder/$filename"
-        val fileDirItem = FileDirItem(newPath, filename)
-        getFileOutputStream(fileDirItem, true) {
-            if (it != null) {
-                try {
-                    it.write(bytes.toByteArray())
-                    callback(newPath)
-                } catch (e: Exception) {
-                } finally {
-                    it.close()
-                }
+        val sourceName = sourceImagePath()?.getFilenameFromPath()
+            ?: applicationContext.getFilenameFromContentUri(saveUri)
+        val base = sourceName?.substringBeforeLast('.')?.takeIf { it.isNotEmpty() && "$it.png".isAValidFilename() }
+            ?: "tmp-${System.currentTimeMillis()}"
+        val file = File(folder, "$base.png")
+        FileOutputStream(file).use { out ->
+            if (!bitmap.compress(CompressFormat.PNG, 0, out)) {
+                throw IOException("Encoding failed")
+            }
+        }
+        return file.absolutePath
+    }
+
+    private fun shareBitmapInBackground(bitmap: Bitmap) {
+        val path = writeShareTempFile(bitmap)
+        runOnUiThread {
+            if (path != null) {
+                sharePathIntent(path, BuildConfig.APPLICATION_ID)
             } else {
-                callback("")
+                toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
             }
         }
     }
 
     private fun shareBitmap(bitmap: Bitmap) {
-        getTempImagePath(bitmap) {
-            if (it != null) {
-                sharePathIntent(it, BuildConfig.APPLICATION_ID)
-            } else {
-                toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+        ensureBackgroundThread {
+            try {
+                shareBitmapInBackground(bitmap)
+            } catch (e: Throwable) {
+                reportSaveFailure(e)
             }
         }
     }
@@ -1276,9 +1491,60 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         updateCropRotateActionButtons()
     }
 
+    /**
+     * Filter preview: runs on a screen-sized copy on a single background thread.
+     * Saving still filters the full-size bitmap.
+     */
     private fun applyFilter(filterItem: FilterItem) {
-        val newBitmap = Bitmap.createBitmap(filterInitialBitmap!!)
-        binding.defaultImageView.setImageBitmap(filterItem.filter.processFilter(newBitmap))
+        val source = filterInitialBitmap ?: return
+        if (source.isRecycled) {
+            return
+        }
+        val generation = ++filterPreviewGeneration
+        val maxWidth = binding.defaultImageView.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val maxHeight = binding.defaultImageView.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
+        try {
+            filterPreviewExecutor.execute {
+                if (generation != filterPreviewGeneration) {
+                    return@execute
+                }
+                try {
+                    val base = filterPreviewBaseFor(source, maxWidth, maxHeight) ?: return@execute
+                    val preview = base.copy(Bitmap.Config.ARGB_8888, true) ?: return@execute
+                    val filtered = filterItem.filter.processFilter(preview)
+                    runOnUiThread {
+                        if (generation == filterPreviewGeneration && !isDestroyed && !filtered.isRecycled) {
+                            binding.defaultImageView.setImageBitmap(filtered)
+                        }
+                    }
+                } catch (e: OutOfMemoryError) {
+                    toast(com.simplemobiletools.commons.R.string.out_of_memory_error)
+                } catch (e: Exception) {
+                    showErrorToast(e)
+                }
+            }
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+        }
+    }
+
+    /** Called only on [filterPreviewExecutor]. */
+    private fun filterPreviewBaseFor(source: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap? {
+        val cached = filterPreviewBase
+        if (filterPreviewBaseSource?.get() === source && cached != null && !cached.isRecycled) {
+            return cached
+        }
+        if (source.isRecycled) {
+            return null
+        }
+        // Never cache the editor's own bitmap: copy it so later recycles can't reach the preview.
+        val base = if (source.width <= maxWidth && source.height <= maxHeight) {
+            source.copy(Bitmap.Config.ARGB_8888, false)
+        } else {
+            scaleBitmapToFit(source, maxWidth, maxHeight).let { if (it === source) source.copy(Bitmap.Config.ARGB_8888, false) else it }
+        } ?: return null
+        filterPreviewBase = base
+        filterPreviewBaseSource = java.lang.ref.WeakReference(source)
+        return base
     }
 
     private fun updateAspectRatio(aspectRatio: Int) {
@@ -1400,33 +1666,30 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
 
             if (isCropIntent) {
                 if (saveUri.scheme == "file") {
-                    saveBitmapToFile(bitmap, saveUri.path!!, true)
+                    saveBitmapToFile(bitmap, encodablePath(saveUri.path!!), true)
                 } else {
-                    var inputStream: InputStream? = null
-                    var outputStream: OutputStream? = null
-                    try {
-                        val profile = jpegSaveProfile()
-                    val stream = ByteArrayOutputStream()
-                    stream.write(jpegBytesNearSize(bitmap, profile.targetBytesFor(bitmap), profile.quality))
-                    inputStream = ByteArrayInputStream(stream.toByteArray())
-                    outputStream = contentResolver.openOutputStream(saveUri, "wt")
-                    inputStream.copyTo(outputStream!!)
-                    } catch (e: Exception) {
-                        showErrorToast(e)
-                        return
-                    } finally {
-                        inputStream?.close()
-                        outputStream?.close()
+                    val target = saveUri
+                    ensureBackgroundThread {
+                        try {
+                            // Encode first, then truncate the caller's output.
+                            val profile = jpegSaveProfile()
+                            val bytes = jpegBytesNearSize(bitmap, profile.targetBytesFor(bitmap), profile.quality)
+                            contentResolver.openOutputStream(target, "wt")?.use { out ->
+                                out.write(bytes)
+                            } ?: throw IOException("Cannot open $target")
+                            writeExif(oldExif, target)
+                            runOnUiThread {
+                                Intent().apply {
+                                    data = target
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    setResult(RESULT_OK, this)
+                                }
+                                finish()
+                            }
+                        } catch (e: Throwable) {
+                            reportSaveFailure(e)
+                        }
                     }
-
-                    writeExif(oldExif, saveUri)
-
-                    Intent().apply {
-                        data = saveUri
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        setResult(RESULT_OK, this)
-                    }
-                    finish()
                 }
             } else {
                 saveEditedBitmap(bitmap)
@@ -1438,16 +1701,15 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
 
     private fun getNewFilePath(): Pair<String, Boolean> {
         var newPath = applicationContext.getRealPathFromURI(saveUri) ?: ""
-        if (newPath.startsWith("/mnt/")) {
+        if (newPath.startsWith("/mnt/") || isInsideAppPrivateDirs(newPath)) {
             newPath = ""
         }
 
         var shouldAppendFilename = true
         if (newPath.isEmpty()) {
-            val filename = applicationContext.getFilenameFromContentUri(saveUri) ?: ""
+            val filename = applicationContext.getFilenameFromContentUri(saveUri)?.takeIf { it.isAValidFilename() } ?: ""
             if (filename.isNotEmpty()) {
-                val path =
-                    if (intent.extras?.containsKey(REAL_FILE_PATH) == true) intent.getStringExtra(REAL_FILE_PATH)?.getParentPath() else internalStoragePath
+                val path = trustedRealPath?.getParentPath() ?: internalStoragePath
                 newPath = "$path/$filename"
                 shouldAppendFilename = false
             }
@@ -1462,55 +1724,55 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
     }
 
     private fun saveBitmapToFile(bitmap: Bitmap, path: String, showSavingToast: Boolean) {
-        try {
-            ensureBackgroundThread {
-                val file = File(path)
-                val fileDirItem = FileDirItem(path, path.getFilenameFromPath())
-                val profile = jpegSaveProfile()
-                try {
-                    val out = FileOutputStream(file)
-                    saveBitmap(file, bitmap, out, showSavingToast, profile)
-                } catch (e: Exception) {
-                    getFileOutputStream(fileDirItem, true) {
-                        if (it != null) {
-                            saveBitmap(file, bitmap, it, showSavingToast, profile)
-                        } else {
-                            toast(R.string.image_editing_failed)
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            showErrorToast(e)
-        } catch (e: OutOfMemoryError) {
-            toast(com.simplemobiletools.commons.R.string.out_of_memory_error)
-        }
-    }
-
-    @TargetApi(Build.VERSION_CODES.N)
-    private fun saveBitmap(file: File, bitmap: Bitmap, out: OutputStream, showSavingToast: Boolean, profile: JpegSaveProfile) {
         if (showSavingToast) {
             toast(com.simplemobiletools.commons.R.string.saving)
         }
-
-        out.use {
-            val image = if (resizeWidth > 0 && resizeHeight > 0) {
-                Bitmap.createScaledBitmap(bitmap, resizeWidth, resizeHeight, true)
-            } else {
-                bitmap
+        val width = resizeWidth
+        val height = resizeHeight
+        ensureBackgroundThread {
+            try {
+                // Encode fully before touching the destination, so an OOM or encoder
+                // failure can't leave the original truncated.
+                val bytes = encodeForSave(bitmap, path.getCompressionFormat(), width, height)
+                val file = File(path)
+                if (writeBytesAtomic(file, bytes)) {
+                    onBitmapFileWritten(file.absolutePath)
+                } else {
+                    // SAF / scoped-storage fallback: not atomic, but the bytes are ready,
+                    // so the window between truncate and write is a single write().
+                    val fileDirItem = FileDirItem(path, path.getFilenameFromPath())
+                    getFileOutputStream(fileDirItem, true) { out ->
+                        if (out == null) {
+                            toast(R.string.image_editing_failed)
+                            return@getFileOutputStream
+                        }
+                        ensureBackgroundThread {
+                            try {
+                                out.use { it.write(bytes) }
+                                onBitmapFileWritten(file.absolutePath)
+                            } catch (e: Throwable) {
+                                reportSaveFailure(e)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Throwable) {
+                reportSaveFailure(e)
             }
-            writeCompressed(image, file.absolutePath.getCompressionFormat(), profile, it)
         }
+    }
 
-        writeExif(oldExif, exifUriForPath(file.absolutePath))
-
-        setResult(Activity.RESULT_OK, intent)
-        scanFinalPath(file.absolutePath)
+    private fun onBitmapFileWritten(path: String) {
+        writeExif(oldExif, exifUriForPath(path))
+        runOnUiThread {
+            setResult(Activity.RESULT_OK, intent)
+            scanFinalPath(path)
+        }
     }
 
     private fun sourceImagePath(): String? {
         uri?.takeIf { it.scheme == "file" }?.path?.takeIf { it.isNotEmpty() }?.let { return it }
-        intent.getStringExtra(REAL_FILE_PATH)?.takeIf { it.isNotEmpty() }?.let { return it }
+        trustedRealPath?.let { return it }
         return uri?.let { applicationContext.getRealPathFromURI(it) }?.takeIf { it.isNotEmpty() }
     }
 
@@ -1643,25 +1905,22 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
 
     private fun replaceWorkingBitmap(bitmap: Bitmap, recordUndo: Boolean = true) {
         val previous = workingBitmap
+        var pushedPrevious = false
         if (recordUndo && previous != null && previous !== bitmap && !previous.isRecycled) {
-            val copy = try {
-                mutableArgbCopy(previous)
-            } catch (_: OutOfMemoryError) {
-                null
-            }
-            if (copy != null) {
-                while (toolUndoStack.size >= 3) {
-                    val oldest = toolUndoStack.removeAt(0)
-                    if (!oldest.isRecycled) {
-                        oldest.recycle()
-                    }
+            // The previous bitmap is no longer the working copy, so keep it as-is
+            // instead of duplicating ~64 MB per edit.
+            while (toolUndoStack.size >= 3) {
+                val oldest = toolUndoStack.removeAt(0)
+                if (!oldest.isRecycled && oldest !== bitmap && oldest !== filterInitialBitmap && oldest !== previous) {
+                    oldest.recycle()
                 }
-                toolUndoStack.add(copy)
             }
+            toolUndoStack.add(previous)
+            pushedPrevious = true
         }
         workingBitmap = bitmap
         hasUnsavedEdits = true
-        if (previous != null && previous !== bitmap && previous !== filterInitialBitmap && !previous.isRecycled) {
+        if (!pushedPrevious && previous != null && previous !== bitmap && previous !== filterInitialBitmap && !previous.isRecycled) {
             previous.recycle()
         }
     }

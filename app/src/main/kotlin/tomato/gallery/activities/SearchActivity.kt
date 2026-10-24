@@ -35,6 +35,12 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
 
     private var mCurrAsyncTask: GetMediaAsynctask? = null
     private var mAllMedia = ArrayList<ThumbnailItem>()
+    private val mSearchHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val mSearchExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val SEARCH_DEBOUNCE_MS = 150L
+
+    @Volatile
+    private var mSearchGeneration = 0
 
     private val binding by viewBinding(ActivitySearchBinding::inflate)
 
@@ -69,6 +75,9 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
         ViewerTransition.unbindPhotoLocator(this)
         super.onDestroy()
         mCurrAsyncTask?.stopFetching()
+        mSearchHandler.removeCallbacksAndMessages(null)
+        mSearchGeneration++
+        mSearchExecutor.shutdown()
     }
 
     private fun setupOptionsMenu() {
@@ -107,17 +116,42 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
     }
 
     private fun textChanged(text: String) {
-        ensureBackgroundThread {
+        // one worker thread, a short debounce and a generation check: results never arrive out of order
+        val generation = ++mSearchGeneration
+        mSearchHandler.removeCallbacksAndMessages(null)
+        mSearchHandler.postDelayed({
+            if (generation != mSearchGeneration || mSearchExecutor.isShutdown) {
+                return@postDelayed
+            }
+            val source = mAllMedia.clone() as ArrayList<ThumbnailItem>
+            try {
+                mSearchExecutor.execute { runSearch(text, source, generation) }
+            } catch (ignored: java.util.concurrent.RejectedExecutionException) {
+            }
+        }, SEARCH_DEBOUNCE_MS)
+    }
+
+    private fun runSearch(text: String, source: ArrayList<ThumbnailItem>, generation: Int) {
+        if (generation != mSearchGeneration) {
+            return
+        }
+        run {
             try {
                 val tagPaths = pathsMatchingTagQuery(text)
                 val filtered = ArrayList(
-                    mAllMedia.filter {
+                    source.filter {
                         it is Medium && (it.name.contains(text, true) || tagPaths.contains(it.path.lowercase()))
                     }
                 )
                 filtered.sortBy { it is Medium && !it.name.startsWith(text, true) }
                 val grouped = MediaFetcher(applicationContext).groupMedia(ArrayList(filtered.filterIsInstance<Medium>()), "")
+                if (generation != mSearchGeneration) {
+                    return
+                }
                 runOnUiThread {
+                    if (generation != mSearchGeneration || isDestroyed) {
+                        return@runOnUiThread
+                    }
                     if (grouped.isEmpty()) {
                         binding.searchEmptyTextPlaceholder.text = getString(com.simplemobiletools.commons.R.string.no_items_found)
                         binding.searchEmptyTextPlaceholder.beVisible()
@@ -162,7 +196,7 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
                 binding.searchGrid.removeItemDecorationAt(0)
             }
 
-            val spanCount = config.mediaColumnCnt
+            val spanCount = config.mediaColumnCnt.coerceAtLeast(1)
             val spacing = config.thumbnailSpacing
             val decoration = GridSpacingItemDecoration(spanCount, spacing, config.scrollHorizontally, config.fileRoundedCorners, media, true)
             binding.searchGrid.addItemDecoration(decoration)
@@ -223,7 +257,7 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
             binding.searchGrid.layoutParams = RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
 
-        layoutManager.spanCount = config.mediaColumnCnt
+        layoutManager.spanCount = config.mediaColumnCnt.coerceAtLeast(1)
         val adapter = getMediaAdapter()
         layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
@@ -313,7 +347,8 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
                 val useRecycleBin = config.useRecycleBin
                 filtered.forEach {
                     if (it.path.startsWith(recycleBinPath) || !useRecycleBin) {
-                        deleteDBPath(it.path)
+                        // deleted for good: drop favorite, tags and date taken too
+                        onPathDeleted(it.path)
                     }
                 }
             }

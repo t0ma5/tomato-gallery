@@ -53,7 +53,7 @@ class MediaAdapter(
     private val config = activity.config
     private val viewType = config.getFolderViewType(if (config.showAll) SHOW_ALL else path)
     private val isListViewType = viewType == VIEW_TYPE_LIST
-    private var visibleItemPaths = ArrayList<String>()
+    private var visibleItemPaths = HashSet<String>()
     private var rotatedImagePaths = ArrayList<String>()
     private var loadImageInstantly = false
     private var delayHandler = Handler(Looper.getMainLooper())
@@ -197,7 +197,14 @@ class MediaAdapter(
 
     override fun getSelectableItemCount() = media.filter { it is Medium }.size
 
-    override fun getIsItemSelectable(position: Int) = !isASectionTitle(position)
+    override fun getIsItemSelectable(position: Int): Boolean {
+        if (isASectionTitle(position)) {
+            return false
+        }
+        val key = getItemSelectionKey(position) ?: return false
+        ensureKeyIndex()
+        return !collidingKeys.contains(key)
+    }
 
     override fun getItemSelectionKey(position: Int) = (media.getOrNull(position) as? Medium)?.path?.hashCode()
 
@@ -211,7 +218,7 @@ class MediaAdapter(
         super.onViewRecycled(holder)
         if (!activity.isDestroyed) {
             val itemView = holder.itemView
-            visibleItemPaths.remove(itemView.allViews.firstOrNull { it.id == R.id.medium_name }?.tag)
+            (itemView.allViews.firstOrNull { it.id == R.id.medium_name }?.tag as? String)?.let { visibleItemPaths.remove(it) }
             val tmb = itemView.allViews.firstOrNull { it.id == R.id.medium_thumbnail }
             if (tmb != null) {
                 tmb.setTag(R.id.medium_thumbnail, null)
@@ -467,27 +474,49 @@ class MediaAdapter(
     }
 
     private fun handleRotate(paths: List<String>, degrees: Int) {
-        var fileCnt = paths.size
+        if (paths.isEmpty()) {
+            return
+        }
+
         rotatedImagePaths.clear()
         activity.toast(com.simplemobiletools.commons.R.string.saving)
         ensureBackgroundThread {
+            var rotatedCnt = 0
             paths.forEach {
                 rotatedImagePaths.add(it)
-                activity.saveRotatedImageToFile(it, it, degrees, true) {
-                    fileCnt--
-                    if (fileCnt == 0) {
-                        activity.runOnUiThread {
-                            listener?.refreshItems()
-                            finishActMode()
-                        }
+                // runs synchronously on this thread; toasts only once for the whole batch below
+                activity.saveRotatedImageToFileResult(it, it, degrees, showToasts = false, clearGlideCache = false) { success ->
+                    if (success) {
+                        rotatedCnt++
                     }
                 }
+            }
+
+            if (rotatedCnt > 0) {
+                activity.clearGlideCaches()
+            }
+
+            val failedCnt = paths.size - rotatedCnt
+            activity.runOnUiThread {
+                if (failedCnt > 0) {
+                    activity.toast(R.string.image_editing_failed)
+                }
+                listener?.refreshItems()
+                finishActMode()
             }
         }
     }
 
     private fun rotateSelection(degrees: Int) {
-        val paths = getSelectedPaths().filter { it.isGalleryImageFast() }
+        val selected = getSelectedPaths().filter { it.isGalleryImageFast() }
+        // only formats that can be written back losslessly enough; HEIC, AVIF, JXL, BMP... are skipped
+        val paths = selected.filter { it.canSaveRotatedAs() }
+        if (paths.size < selected.size) {
+            activity.toast(R.string.rotate_format_unsupported)
+        }
+        if (paths.isEmpty()) {
+            return
+        }
 
         if (paths.any { activity.needsStupidWritePermissions(it) }) {
             activity.handleSAFDialog(paths.first { activity.needsStupidWritePermissions(it) }) {
@@ -728,7 +757,37 @@ class MediaAdapter(
 
     private fun getFirstSelectedItemPath() = getItemWithKey(selectedKeys.first())?.path
 
-    private fun getItemWithKey(key: Int): Medium? = media.firstOrNull { (it as? Medium)?.path?.hashCode() == key } as? Medium
+    // key -> item index, rebuilt when the list changes. Keys are 32-bit path hashes and can collide:
+    // a colliding key resolves to nothing rather than to the wrong file.
+    private var keyIndex = HashMap<Int, Medium>()
+    private var collidingKeys = HashSet<Int>()
+    private var keyIndexSource: ArrayList<ThumbnailItem>? = null
+    private var keyIndexSize = -1
+
+    private fun ensureKeyIndex() {
+        if (keyIndexSource === media && keyIndexSize == media.size) {
+            return
+        }
+        val index = HashMap<Int, Medium>(media.size)
+        val collisions = HashSet<Int>()
+        media.forEach { item ->
+            val medium = item as? Medium ?: return@forEach
+            val key = medium.path.hashCode()
+            val existing = index.put(key, medium)
+            if (existing != null && existing.path != medium.path) {
+                collisions.add(key)
+            }
+        }
+        keyIndex = index
+        collidingKeys = collisions
+        keyIndexSource = media
+        keyIndexSize = media.size
+    }
+
+    private fun getItemWithKey(key: Int): Medium? {
+        ensureKeyIndex()
+        return if (collidingKeys.contains(key)) null else keyIndex[key]
+    }
 
     fun updateMedia(newMedia: ArrayList<ThumbnailItem>) {
         val thumbnailItems = newMedia.clone() as ArrayList<ThumbnailItem>

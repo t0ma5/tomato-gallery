@@ -101,15 +101,9 @@ data class Medium(
         return calendar.timeInMillis.toString()
     }
 
-    fun getSignature(): String {
-        val lastModified = if (modified > 1) {
-            modified
-        } else {
-            File(path).lastModified()
-        }
-
-        return "$path-$lastModified-$size"
-    }
+    // Called for every thumbnail bind on the UI thread, so it must not touch the disk.
+    // MediaFetcher fills [modified] with the real file timestamp on the background fetch.
+    fun getSignature() = "$path-$modified-$size"
 
     fun getKey() = ObjectKey(getSignature())
 

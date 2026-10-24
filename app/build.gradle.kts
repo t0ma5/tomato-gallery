@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.konan.properties.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android)
@@ -11,9 +11,12 @@ plugins {
 
 val keystorePropertiesFile: File = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+val hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
 }
+// Escape hatch for a deliberate unsigned release build: -PallowUnsignedRelease=true
+val allowUnsignedRelease = (findProperty("allowUnsignedRelease") as? String).equals("true", ignoreCase = true)
 val localArm64 = (findProperty("localArm64") as? String).equals("true", ignoreCase = true)
 
 android {
@@ -132,6 +135,12 @@ base {
 }
 
 tasks.configureEach {
+    // Never hand out an unsigned APK under the release name; debug and PR builds are unaffected
+    if (name.startsWith("package") && name.endsWith("Release") && !hasReleaseSigning && !allowUnsignedRelease) {
+        doFirst {
+            throw GradleException("Release build needs keystore.properties for signing (or pass -PallowUnsignedRelease=true)")
+        }
+    }
     if (name != "assembleFossRelease") {
         return@configureEach
     }

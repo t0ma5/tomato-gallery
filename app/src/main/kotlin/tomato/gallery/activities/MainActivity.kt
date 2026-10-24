@@ -2,6 +2,7 @@ package tomato.gallery.activities
 
 import android.app.Activity
 import android.content.ClipData
+import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -45,6 +46,7 @@ import java.io.*
 class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     companion object {
         private const val LAST_MEDIA_CHECK_PERIOD = 3000L
+        private const val ADAPTER_REFRESH_MS = 500L
     }
 
     private var mIsPickImageIntent = false
@@ -720,7 +722,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
 
-        layoutManager.spanCount = config.dirColumnCnt
+        layoutManager.spanCount = config.dirColumnCnt.coerceAtLeast(1)
     }
 
     private fun setupListLayoutManager() {
@@ -792,7 +794,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     }
 
     private fun columnCountChanged() {
-        (binding.directoriesGrid.layoutManager as MyGridLayoutManager).spanCount = config.dirColumnCnt
+        (binding.directoriesGrid.layoutManager as MyGridLayoutManager).spanCount = config.dirColumnCnt.coerceAtLeast(1)
         refreshMenuItems()
         getRecyclerAdapter()?.apply {
             notifyItemRangeChanged(0, dirs.size)
@@ -831,12 +833,43 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
     private fun isVideoType(intent: Intent) = (intent.type?.startsWith("video/") == true || intent.type == Video.Media.CONTENT_TYPE)
 
+    /**
+     * EXTRA_OUTPUT comes from the calling app and is opened for writing. Only accept content:// URIs served by
+     * another app: never file:// and never this app's own providers, or a caller could make the gallery
+     * overwrite its own prefs or database.
+     */
+    private fun isSafeExtraOutput(output: Uri): Boolean {
+        if (output.scheme != ContentResolver.SCHEME_CONTENT) {
+            return false
+        }
+        val authority = output.authority ?: return false
+        if (authority == "${BuildConfig.APPLICATION_ID}.provider" || authority.startsWith(BuildConfig.APPLICATION_ID)) {
+            return false
+        }
+        val ownerPackage = try {
+            packageManager.resolveContentProvider(authority, 0)?.packageName
+        } catch (e: Exception) {
+            null
+        }
+        if (ownerPackage == packageName) {
+            return false
+        }
+        // defence in depth: a path segment pointing into our private storage is never a valid target
+        val privateDirs = listOfNotNull(applicationInfo.dataDir, filesDir.parent, "/data/user/0/$packageName", "/data/data/$packageName")
+        val decodedPath = Uri.decode(output.path ?: "")
+        return privateDirs.none { decodedPath.contains(it) }
+    }
+
     private fun fillExtraOutput(resultData: Intent): Uri? {
         val file = File(resultData.data!!.path!!)
         var inputStream: InputStream? = null
         var outputStream: OutputStream? = null
         try {
-            val output = intent.extras!!.get(MediaStore.EXTRA_OUTPUT) as Uri
+            val output = intent.extras?.get(MediaStore.EXTRA_OUTPUT) as? Uri ?: return getFilePublicUri(file, BuildConfig.APPLICATION_ID)
+            if (!isSafeExtraOutput(output)) {
+                // don't write anywhere, just hand back a read-only URI of the picked file
+                return getFilePublicUri(file, BuildConfig.APPLICATION_ID)
+            }
             inputStream = FileInputStream(file)
             outputStream = contentResolver.openOutputStream(output)
             inputStream.copyTo(outputStream!!)
@@ -935,7 +968,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         mLastMediaFetcher = MediaFetcher(applicationContext)
         val getImagesOnly = mIsPickImageIntent || mIsGetImageContentIntent
         val getVideosOnly = mIsPickVideoIntent || mIsGetVideoContentIntent
-        val favoritePaths = getFavoritePaths()
+        val favoritePaths = getFavoritePaths().toCollection(LinkedHashSet())
         val hiddenString = getString(R.string.hidden)
         val albumCovers = config.parseAlbumCovers()
         val includedFolders = config.includedFolders
@@ -975,6 +1008,9 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
         // fetch files from MediaStore only, unless the app has the MANAGE_EXTERNAL_STORAGE permission on Android 11+
         val android11Files = mLastMediaFetcher?.getAndroid11FolderMedia(getImagesOnly, getVideosOnly, favoritePaths, false, true, dateTakens)
+        // refresh the grid at most every ADAPTER_REFRESH_MS while rechecking, not once per changed folder
+        var pendingAdapterRefresh = false
+        var lastAdapterRefresh = 0L
         try {
             for (directory in dirs) {
                 if (mShouldStopFetching || isDestroyed || isFinishing) {
@@ -1023,7 +1059,13 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                     sortValue = getDirectorySortingValue(curMedia, path, name, size)
                 }
 
-                setupAdapter(dirs)
+                pendingAdapterRefresh = true
+                val now = System.currentTimeMillis()
+                if (now - lastAdapterRefresh >= ADAPTER_REFRESH_MS) {
+                    lastAdapterRefresh = now
+                    pendingAdapterRefresh = false
+                    setupAdapter(dirs)
+                }
 
                 // update directories and media files in the local db, delete invalid items. Intentionally creating a new thread
                 updateDBDirectory(directory)
@@ -1037,10 +1079,12 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 }
 
                 if (!directory.isRecycleBin()) {
+                    // compare by path: cached rows carry an id, fresh ones don't, so equality never matched
+                    val curPaths = curMedia.mapTo(HashSet()) { it.path }
                     getCachedMedia(directory.path, getVideosOnly, getImagesOnly) {
                         val mediaToDelete = ArrayList<Medium>()
                         it.forEach {
-                            if (!curMedia.contains(it)) {
+                            if ((it as? Medium)?.path?.let { path -> curPaths.contains(path) } != true) {
                                 val medium = it as? Medium
                                 val path = medium?.path
                                 if (path != null) {
@@ -1059,9 +1103,15 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                     directoryDB.deleteDirPath(it.path)
                 }
                 dirs.removeAll(dirsToRemove)
-                setupAdapter(dirs)
+                pendingAdapterRefresh = true
             }
         } catch (ignored: Exception) {
+        }
+
+        if (pendingAdapterRefresh) {
+            pendingAdapterRefresh = false
+            lastAdapterRefresh = System.currentTimeMillis()
+            setupAdapter(dirs)
         }
 
         val foldersToScan = mLastMediaFetcher!!.getFoldersToScan()
@@ -1120,7 +1170,13 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
             val newDir = createDirectoryFromMedia(folder, newMedia, albumCovers, hiddenString, includedFolders, getProperFileSize, noMediaFolders)
             dirs.add(newDir)
-            setupAdapter(dirs)
+            pendingAdapterRefresh = true
+            val now = System.currentTimeMillis()
+            if (now - lastAdapterRefresh >= ADAPTER_REFRESH_MS) {
+                lastAdapterRefresh = now
+                pendingAdapterRefresh = false
+                setupAdapter(dirs)
+            }
 
             // make sure to create a new thread for these operations, dont just use the common bg thread
             Thread {
@@ -1132,6 +1188,10 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 } catch (ignored: Exception) {
                 }
             }.start()
+        }
+
+        if (pendingAdapterRefresh) {
+            setupAdapter(dirs)
         }
 
         mLoadedInitialPhotos = true

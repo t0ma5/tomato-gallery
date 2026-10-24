@@ -3,4 +3,5 @@
     <item name="view_base_padding" type="id" />
     <item name="press_feedback" type="id" />
     <item name="motion_selected" type="id" />
+    <item name="fluid_springs" type="id" />
 </resources>

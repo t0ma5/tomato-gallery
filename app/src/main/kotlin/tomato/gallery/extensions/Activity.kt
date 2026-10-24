@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.ContentProviderOperation
 import android.content.ContentResolver
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Process
@@ -39,6 +40,7 @@ import com.simplemobiletools.commons.extensions.*
 import com.simplemobiletools.commons.helpers.*
 import com.simplemobiletools.commons.models.FAQItem
 import tomato.gallery.helpers.PATH
+import tomato.gallery.helpers.putInternalNonce
 import com.simplemobiletools.commons.models.FileDirItem
 import tomato.gallery.BuildConfig
 import tomato.gallery.R
@@ -159,26 +161,96 @@ internal var pendingSystemTrashCallback: ((Boolean) -> Unit)? = null
 internal var pendingSystemTrashPaths: ArrayList<String>? = null
 
 fun Activity.shareMediumPath(path: String) {
+    shareMediaPaths(arrayListOf(path))
+}
+
+/**
+ * Shares [paths]; with "strip metadata on share" on, every item is copied to cache/share and stripped first.
+ * An item that can't be stripped (HEIC, video, DNG, unreadable...) is left out with a toast, never shared
+ * with its metadata. [paths] may hold content:// strings (the video player passes one).
+ */
+fun Activity.shareMediaPaths(paths: ArrayList<String>) {
+    if (paths.isEmpty()) {
+        return
+    }
+
     val activity = this
     if (activity is BaseSimpleActivity && activity.config.stripMetadataOnShare) {
         ensureBackgroundThread {
-            try {
-                val dest = File(activity.cacheDir, "share/${File(path).name}")
-                dest.parentFile?.mkdirs()
-                File(path).copyTo(dest, overwrite = true)
-                MetadataStripper.stripAll(activity, dest.absolutePath)
-                activity.runOnUiThread { sharePath(dest.absolutePath) }
-            } catch (_: Exception) {
-                activity.runOnUiThread { sharePath(path) }
+            val shareDir = File(activity.cacheDir, "share")
+            // the previous share is done by now, don't let stripped copies pile up
+            shareDir.deleteRecursively()
+            shareDir.mkdirs()
+
+            val stripped = ArrayList<String>()
+            var failed = 0
+            paths.forEachIndexed { index, path ->
+                // one subfolder per item, so two "IMG_0001.jpg" from different folders don't overwrite each other
+                val dest = File(File(shareDir, index.toString()), activity.getShareFilename(path))
+                val ok = try {
+                    dest.parentFile?.mkdirs()
+                    activity.copyToShareCache(path, dest) && MetadataStripper.stripAll(activity, dest.absolutePath)
+                } catch (_: Exception) {
+                    false
+                }
+
+                if (ok) {
+                    stripped.add(dest.absolutePath)
+                } else {
+                    dest.delete()
+                    failed++
+                }
+            }
+
+            activity.runOnUiThread {
+                if (failed > 0) {
+                    activity.toast(activity.getString(R.string.share_strip_failed_skipped, failed), android.widget.Toast.LENGTH_LONG)
+                }
+                when {
+                    stripped.size == 1 -> sharePath(stripped.first())
+                    stripped.size > 1 -> sharePaths(stripped)
+                }
             }
         }
         return
     }
-    sharePath(path)
+
+    if (paths.size == 1) {
+        sharePath(paths.first())
+    } else {
+        sharePaths(paths)
+    }
 }
 
-fun Activity.shareMediaPaths(paths: ArrayList<String>) {
-    sharePaths(paths)
+private fun Activity.getShareFilename(path: String): String {
+    val name = if (path.startsWith("content://")) {
+        try {
+            contentResolver.query(Uri.parse(path), arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+        } catch (_: Exception) {
+            null
+        } ?: Uri.parse(path).lastPathSegment?.substringAfterLast('/')
+    } else {
+        File(path.removePrefix("file://")).name
+    }
+    // never let a provider-supplied name escape the share folder
+    return name?.substringAfterLast('/')?.takeIf { it.isNotBlank() && it != "." && it != ".." } ?: "shared_file"
+}
+
+private fun Activity.copyToShareCache(path: String, dest: File): Boolean {
+    val input = if (path.startsWith("content://")) {
+        contentResolver.openInputStream(Uri.parse(path))
+    } else {
+        FileInputStream(File(path.removePrefix("file://")))
+    } ?: return false
+
+    input.use { inputStream ->
+        FileOutputStream(dest).use { out ->
+            inputStream.copyTo(out)
+        }
+    }
+    return dest.length() > 0L
 }
 
 fun Activity.setAs(path: String) {
@@ -235,6 +307,7 @@ fun Activity.openEditor(path: String, forceChooser: Boolean = false) {
             action = Intent.ACTION_EDIT
             setDataAndType(uri, mime)
             putExtra(REAL_FILE_PATH, newPath)
+            putInternalNonce()
         }, REQUEST_EDIT_IMAGE)
     } catch (e: Exception) {
         showErrorToast(e)
@@ -482,13 +555,21 @@ fun BaseSimpleActivity.toggleFileVisibility(oldPath: String, hide: Boolean, call
 
     val newPath = "$path/$filename"
     renameFile(oldPath, newPath, false) { success, useAndroid30Way ->
-        runOnUiThread {
-            release()
-            callback?.invoke(newPath)
+        if (!success) {
+            // nothing was renamed: keep the DB as is and report the unchanged path
+            runOnUiThread {
+                release()
+                callback?.invoke(oldPath)
+            }
+            return@renameFile
         }
 
         ensureBackgroundThread {
             updateDBMediaPath(oldPath, newPath)
+            runOnUiThread {
+                release()
+                callback?.invoke(newPath)
+            }
         }
     }
     return true
@@ -518,7 +599,8 @@ fun BaseSimpleActivity.tryDeleteFileDirItem(
     deleteFile(fileDirItem, allowDeleteFolder, isDeletingMultipleFiles = false) {
         if (deleteFromDatabase) {
             ensureBackgroundThread {
-                deleteDBPath(fileDirItem.path)
+                // also drops favorite, tags and date taken once the file is really gone
+                onPathDeleted(fileDirItem.path)
                 runOnUiThread {
                     callback?.invoke(it)
                 }
@@ -529,67 +611,134 @@ fun BaseSimpleActivity.tryDeleteFileDirItem(
     }
 }
 
+/**
+ * All-or-nothing bin move for callers that delete every original on success. If any file fails, the ones
+ * already copied are taken back out of the bin (copy deleted, rows reverted) and the callback gets false,
+ * so no original is deleted while its row points at the bin.
+ */
 fun BaseSimpleActivity.movePathsInRecycleBin(paths: ArrayList<String>, callback: ((wasSuccess: Boolean) -> Unit)?) {
     if (shouldUseSystemTrash()) {
         trashPathsWithSystem(paths, callback)
         return
     }
+    movePathsInRecycleBinPartially(paths) { moved ->
+        if (moved.size == paths.size) {
+            callback?.invoke(true)
+        } else {
+            ensureBackgroundThread {
+                moved.forEach { undoRecycleBinCopy(it) }
+                callback?.invoke(false)
+            }
+        }
+    }
+}
+
+/**
+ * Copies each path into the app's recycle bin and points its media row (inserted when missing) and tags at
+ * the bin copy. [callback] gets the original paths that were copied successfully, on a background thread:
+ * only those originals may be deleted. Does not handle the system trash, check [shouldUseSystemTrash] first.
+ */
+fun BaseSimpleActivity.movePathsInRecycleBinPartially(paths: ArrayList<String>, callback: (movedPaths: ArrayList<String>) -> Unit) {
     ensureBackgroundThread {
-        var pathsCnt = paths.size
+        val moved = ArrayList<String>()
         val OTGPath = config.OTGPath
+        var shownError = false
 
         for (source in paths) {
-            if (OTGPath.isNotEmpty() && source.startsWith(OTGPath)) {
-                var inputStream: InputStream? = null
-                var out: OutputStream? = null
-                try {
-                    val destination = "$recycleBinPath/$source"
-                    val fileDocument = getSomeDocumentFile(source)
-                    inputStream = applicationContext.contentResolver.openInputStream(fileDocument?.uri!!)
-                    out = getFileOutputStreamSync(destination, source.getMimeType())
+            // a second "photo.jpg" deleted from the same folder must not replace the copy already in the bin
+            var internalFile = File(recycleBinPath, source)
+            if (internalFile.exists()) {
+                internalFile = getAlternativeFile(internalFile)
+            }
+            val binKey = "$RECYCLE_BIN${internalFile.absolutePath.removePrefix(recycleBinPath)}"
 
-                    var copiedSize = 0L
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var bytes = inputStream!!.read(buffer)
-                    while (bytes >= 0) {
-                        out!!.write(buffer, 0, bytes)
-                        copiedSize += bytes
-                        bytes = inputStream.read(buffer)
+            val copied = try {
+                if (OTGPath.isNotEmpty() && source.startsWith(OTGPath)) {
+                    copyOtgFileToRecycleBin(source, internalFile)
+                } else {
+                    val file = File(source)
+                    val lastModified = file.lastModified()
+                    internalFile.parentFile?.mkdirs()
+                    val ok = file.isFile && file.copyRecursively(internalFile, true) && internalFile.length() == file.length()
+                    if (ok && config.keepLastModified && lastModified != 0L) {
+                        internalFile.setLastModified(lastModified)
                     }
-
-                    out?.flush()
-
-                    if (fileDocument.getItemSize(true) == copiedSize && getDoesFilePathExist(destination)) {
-                        mediaDB.updateDeleted("$RECYCLE_BIN$source", System.currentTimeMillis(), source)
-                        pathsCnt--
-                    }
-                } catch (e: Exception) {
-                    showErrorToast(e)
-                    return@ensureBackgroundThread
-                } finally {
-                    inputStream?.close()
-                    out?.close()
+                    ok
                 }
-            } else {
-                val file = File(source)
-                val internalFile = File(recycleBinPath, source)
-                val lastModified = file.lastModified()
-                try {
-                    if (file.copyRecursively(internalFile, true)) {
-                        mediaDB.updateDeleted("$RECYCLE_BIN$source", System.currentTimeMillis(), source)
-                        pathsCnt--
-
-                        if (config.keepLastModified && lastModified != 0L) {
-                            internalFile.setLastModified(lastModified)
-                        }
-                    }
-                } catch (e: Exception) {
+            } catch (e: Exception) {
+                if (!shownError) {
                     showErrorToast(e)
-                    return@ensureBackgroundThread
+                    shownError = true
+                }
+                false
+            }
+
+            if (!copied) {
+                internalFile.delete()
+                continue
+            }
+
+            try {
+                val deletedTS = System.currentTimeMillis()
+                if (mediaDB.updateDeleted(binKey, deletedTS, source) == 0) {
+                    // no cached row (stack members, Search, uncached files): add one, or the file never shows up in the bin
+                    mediaDB.insert(getRecycleBinMedium(source, binKey, internalFile, deletedTS))
+                }
+                tagsDB.updatePath(oldPath = source, newPath = binKey)
+                moved.add(source)
+            } catch (e: Exception) {
+                internalFile.delete()
+                if (!shownError) {
+                    showErrorToast(e)
+                    shownError = true
                 }
             }
         }
-        callback?.invoke(pathsCnt == 0)
+        callback(moved)
+    }
+}
+
+private fun BaseSimpleActivity.copyOtgFileToRecycleBin(source: String, internalFile: File): Boolean {
+    val fileDocument = getSomeDocumentFile(source) ?: return false
+    var copiedSize = 0L
+    val inputStream = applicationContext.contentResolver.openInputStream(fileDocument.uri) ?: return false
+    inputStream.use { input ->
+        internalFile.parentFile?.mkdirs()
+        FileOutputStream(internalFile).use { out ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var bytes = input.read(buffer)
+            while (bytes >= 0) {
+                out.write(buffer, 0, bytes)
+                copiedSize += bytes
+                bytes = input.read(buffer)
+            }
+            out.flush()
+        }
+    }
+    return fileDocument.getItemSize(true) == copiedSize && internalFile.exists()
+}
+
+private fun Context.getRecycleBinMedium(source: String, binKey: String, internalFile: File, deletedTS: Long): Medium {
+    val type = getMediumTypeFromPath(source)
+    val lastModified = internalFile.lastModified()
+    return Medium(
+        null, source.getFilenameFromPath(), binKey, source.getParentPath(), lastModified, lastModified,
+        internalFile.length(), type, 0, false, deletedTS, 0L
+    )
+}
+
+// Reverts one successful bin copy when the batch it belongs to is rolled back; the original was not deleted.
+private fun BaseSimpleActivity.undoRecycleBinCopy(source: String) {
+    try {
+        val deleted = mediaDB.getDeletedMedia().filter { medium ->
+            medium.parentPath == source.getParentPath() && medium.name == source.getFilenameFromPath()
+        }
+        // newest first: the copy made by this batch
+        val row = deleted.maxByOrNull { it.deletedTS } ?: return
+        File(recycleBinPath, row.path.removePrefix(RECYCLE_BIN)).delete()
+        mediaDB.updateDeleted(source, 0, row.path)
+        tagsDB.updatePath(oldPath = row.path, newPath = source)
+    } catch (_: Exception) {
     }
 }
 
@@ -634,35 +783,60 @@ fun BaseSimpleActivity.restoreRecycleBinPaths(paths: ArrayList<String>, callback
 
             var inputStream: InputStream? = null
             var out: OutputStream? = null
+            var copiedSize = -1L
             try {
                 out = getFileOutputStreamSync(destination, source.getMimeType())
                 inputStream = getFileInputStreamSync(source)
 
-                var copiedSize = 0L
+                var copied = 0L
                 val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
                 var bytes = inputStream!!.read(buffer)
                 while (bytes >= 0) {
                     out!!.write(buffer, 0, bytes)
-                    copiedSize += bytes
+                    copied += bytes
                     bytes = inputStream.read(buffer)
                 }
 
                 out?.flush()
-
-                if (File(source).length() == copiedSize) {
-                    mediaDB.updateDeleted(destination.removePrefix(recycleBinPath), 0, "$RECYCLE_BIN${source.removePrefix(recycleBinPath)}")
-                }
-                newPaths.add(destination)
-
-                if (config.keepLastModified && lastModified != 0L) {
-                    File(destination).setLastModified(lastModified)
-                }
+                copiedSize = copied
             } catch (e: Exception) {
                 showErrorToast(e)
             } finally {
-                inputStream?.close()
-                out?.close()
+                try {
+                    inputStream?.close()
+                } catch (_: Exception) {
+                }
+                try {
+                    out?.close()
+                } catch (_: Exception) {
+                }
             }
+
+            if (copiedSize < 0L || File(source).length() != copiedSize) {
+                // short copy (disk full...): never rescan a truncated file into the gallery, keep the bin copy
+                tryDeleteDestinationQuietly(destination)
+                continue
+            }
+
+            try {
+                val binKey = "$RECYCLE_BIN${source.removePrefix(recycleBinPath)}"
+                mediaDB.updateDeleted(destination, 0, binKey)
+                // the restore target may differ from the original path (name taken, Pictures fallback)
+                mediaDB.updateMedium(
+                    oldPath = destination, newParentPath = destination.getParentPath(), newFilename = destination.getFilenameFromPath(),
+                    newFullPath = destination
+                )
+                tagsDB.updatePath(oldPath = binKey, newPath = destination)
+            } catch (_: Exception) {
+            }
+            newPaths.add(destination)
+
+            if (config.keepLastModified && lastModified != 0L) {
+                File(destination).setLastModified(lastModified)
+            }
+
+            // the copy is verified, free the space used by the bin copy
+            File(source).delete()
         }
 
         runOnUiThread {
@@ -672,6 +846,16 @@ fun BaseSimpleActivity.restoreRecycleBinPaths(paths: ArrayList<String>, callback
         rescanPaths(newPaths) {
             fixDateTaken(newPaths, false)
         }
+    }
+}
+
+private fun BaseSimpleActivity.tryDeleteDestinationQuietly(path: String) {
+    try {
+        val file = File(path)
+        if (file.exists() && !file.delete() && getDoesFilePathExist(path)) {
+            getSomeDocumentFile(path)?.delete()
+        }
+    } catch (_: Exception) {
     }
 }
 
@@ -851,80 +1035,217 @@ fun AppCompatActivity.fixDateTaken(
 }
 
 fun BaseSimpleActivity.saveRotatedImageToFile(oldPath: String, newPath: String, degrees: Int, showToasts: Boolean, callback: () -> Unit) {
-    var newDegrees = degrees
+    saveRotatedImageToFileResult(oldPath, newPath, degrees, showToasts) { success ->
+        if (success) {
+            callback()
+        }
+    }
+}
+
+private val ROTATABLE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp")
+
+/**
+ * Only JPEG, PNG and WebP can be written back after a rotate. Anything else (HEIC, AVIF, JXL, BMP...) would get
+ * JPEG bytes under its own name and lose HDR, animation and EXIF.
+ */
+fun String.canSaveRotatedAs(): Boolean = getFilenameExtension().lowercase() in ROTATABLE_EXTENSIONS
+
+/**
+ * Same as [saveRotatedImageToFile], but always reports the outcome so batch callers can count failures.
+ * With [clearGlideCache] false the caller clears the Glide cache once after the whole batch.
+ * The callback runs on the calling thread for early failures, otherwise on whichever thread finished the work.
+ */
+fun BaseSimpleActivity.saveRotatedImageToFileResult(
+    oldPath: String, newPath: String, degrees: Int, showToasts: Boolean, clearGlideCache: Boolean = true, callback: (success: Boolean) -> Unit
+) {
+    var newDegrees = degrees % 360
     if (newDegrees < 0) {
         newDegrees += 360
     }
 
+    // never write the encoder's format under another format's extension, never flatten an animation in place
+    if (!newPath.canSaveRotatedAs() || (oldPath == newPath && isAnimatedImage(oldPath))) {
+        if (showToasts) {
+            toast(R.string.rotate_format_unsupported)
+        }
+        callback(false)
+        return
+    }
+
     if (oldPath == newPath && oldPath.isJpg()) {
-        if (tryRotateByExif(oldPath, newDegrees, showToasts, callback)) {
+        if (tryRotateByExif(oldPath, newDegrees, showToasts, clearGlideCache) { callback(true) }) {
             return
         }
     }
 
-    val tmpPath = "$recycleBinPath/.tmp_${newPath.getFilenameFromPath()}"
-    val tmpFileDirItem = FileDirItem(tmpPath, tmpPath.getFilenameFromPath())
+    val tmpPath = "$recycleBinPath/.tmp_${System.nanoTime()}_${newPath.getFilenameFromPath()}"
+    var keepTmp = false
+    var success = false
     try {
-        getFileOutputStream(tmpFileDirItem) {
-            if (it == null) {
-                if (showToasts) {
-                    toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
-                }
-                return@getFileOutputStream
+        val oldLastModified = File(oldPath).lastModified()
+        File(tmpPath).parentFile?.mkdirs()
+        val prepared = if (oldPath.isJpg() && newPath.isJpg()) {
+            copyFile(oldPath, tmpPath) && (tryRewriteExifRotation(tmpPath, newDegrees) || rotateJpegFallback(oldPath, tmpPath, newDegrees))
+        } else {
+            writeRotatedNonJpeg(oldPath, newPath, tmpPath, newDegrees)
+        }
+
+        if (!prepared) {
+            if (showToasts) {
+                toast(R.string.image_editing_failed)
             }
-
-            val oldLastModified = File(oldPath).lastModified()
-            if (oldPath.isJpg()) {
-                // Release the truncating stream before saveAttributes(). An open handle makes that
-                // call fail, and the fallback then re-encodes a small JPEG into a much larger one.
-                it.close()
-                copyFile(oldPath, tmpPath)
-                if (!tryRewriteExifRotation(tmpPath, newDegrees) && !rotateJpegFallback(oldPath, tmpPath, newDegrees)) {
-                    if (showToasts) {
-                        toast(R.string.image_editing_failed)
-                    }
-                    return@getFileOutputStream
-                }
-                copyFile(tmpPath, newPath)
-                rescanPaths(arrayListOf(newPath))
-                fileRotatedSuccessfully(newPath, oldLastModified)
-                callback.invoke()
-                return@getFileOutputStream
+        } else if (!replaceFileSafely(tmpPath, newPath)) {
+            // the destination may be damaged; the rotated copy is the only intact result, keep it
+            keepTmp = true
+            if (showToasts) {
+                toast(R.string.image_editing_failed)
             }
-
-            val inputstream = getFileInputStreamSync(oldPath)
-            val bitmap = BitmapFactory.decodeStream(inputstream)
-            inputstream?.close()
-            saveFile(tmpPath, bitmap, it as FileOutputStream, newDegrees, 90)
-
-            copyFile(tmpPath, newPath)
+        } else {
             rescanPaths(arrayListOf(newPath))
-            fileRotatedSuccessfully(newPath, oldLastModified)
-
-            it.flush()
-            it.close()
-            callback.invoke()
+            fileRotatedSuccessfully(newPath, oldLastModified, clearGlideCache)
+            success = true
         }
     } catch (e: OutOfMemoryError) {
         if (showToasts) {
             toast(com.simplemobiletools.commons.R.string.out_of_memory_error)
         }
-    } catch (e: Exception) {
-        if (showToasts) {
+    } catch (e: Throwable) {
+        if (showToasts && e is Exception) {
             showErrorToast(e)
         }
     } finally {
-        tryDeleteFileDirItem(tmpFileDirItem, false, true)
+        if (!keepTmp) {
+            File(tmpPath).delete()
+        }
     }
+    callback(success)
+}
+
+/** PNG, WebP (or a JPEG written from another source): decode, rotate, encode in the format of [newPath], copy EXIF. */
+private fun BaseSimpleActivity.writeRotatedNonJpeg(oldPath: String, newPath: String, tmpPath: String, degrees: Int): Boolean {
+    val bitmap = getFileInputStreamSync(oldPath)?.use { BitmapFactory.decodeStream(it) } ?: return false
+    val matrix = Matrix()
+    matrix.postRotate(degrees.toFloat())
+    val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    val encoded = try {
+        val out = ByteArrayOutputStream()
+        val extension = newPath.getFilenameExtension().lowercase()
+        val ok = when (extension) {
+            "png" -> rotated.compress(Bitmap.CompressFormat.PNG, 100, out)
+            "webp" -> if (isLosslessWebp(oldPath) || oldPath.isPng()) {
+                if (isRPlus()) {
+                    rotated.compress(Bitmap.CompressFormat.WEBP_LOSSLESS, 100, out)
+                } else {
+                    // the legacy WEBP format is lossless at quality 100 (Android 10+)
+                    @Suppress("DEPRECATION")
+                    rotated.compress(Bitmap.CompressFormat.WEBP, 100, out)
+                }
+            } else if (isRPlus()) {
+                rotated.compress(Bitmap.CompressFormat.WEBP_LOSSY, 90, out)
+            } else {
+                @Suppress("DEPRECATION")
+                rotated.compress(Bitmap.CompressFormat.WEBP, 90, out)
+            }
+
+            else -> rotated.compress(Bitmap.CompressFormat.JPEG, 90, out)
+        }
+        if (!ok) null else out.toByteArray()
+    } finally {
+        if (rotated !== bitmap && !rotated.isRecycled) {
+            rotated.recycle()
+        }
+        if (!bitmap.isRecycled) {
+            bitmap.recycle()
+        }
+    }
+
+    if (encoded == null || encoded.isEmpty()) {
+        return false
+    }
+    FileOutputStream(File(tmpPath)).use { it.write(encoded) }
+    copyExifWithoutOrientation(oldPath, tmpPath)
+    return true
+}
+
+// Keeps date, GPS and the rest of the EXIF; pixels are already rotated, so the orientation tag stays normal.
+private fun BaseSimpleActivity.copyExifWithoutOrientation(sourcePath: String, destPath: String) {
+    try {
+        val sourceExif = getFileInputStreamSync(sourcePath)?.use { ExifInterface(it) } ?: return
+        val destExif = ExifInterface(destPath)
+        sourceExif.copyNonDimensionAttributesTo(destExif)
+    } catch (_: Exception) {
+    }
+}
+
+private fun BaseSimpleActivity.readHeader(path: String, size: Int): ByteArray? {
+    return try {
+        getFileInputStreamSync(path)?.use { input ->
+            val buffer = ByteArray(size)
+            var total = 0
+            while (total < size) {
+                val read = input.read(buffer, total, size - total)
+                if (read < 0) {
+                    break
+                }
+                total += read
+            }
+            buffer.copyOf(total)
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun ByteArray.containsAscii(text: String): Boolean {
+    val needle = text.toByteArray(Charsets.US_ASCII)
+    if (needle.isEmpty() || size < needle.size) {
+        return false
+    }
+    for (i in 0..size - needle.size) {
+        var match = true
+        for (j in needle.indices) {
+            if (this[i + j] != needle[j]) {
+                match = false
+                break
+            }
+        }
+        if (match) {
+            return true
+        }
+    }
+    return false
+}
+
+// Animated WebP ("ANIM" chunk), APNG saved as .png ("acTL" before the image data) or GIF: a decode keeps one frame only.
+private fun BaseSimpleActivity.isAnimatedImage(path: String): Boolean {
+    return when {
+        path.isGif() -> true
+        path.isWebP() -> readHeader(path, 64)?.containsAscii("ANIM") == true
+        path.isPng() -> readHeader(path, 64 * 1024)?.containsAscii("acTL") == true
+        else -> false
+    }
+}
+
+private fun BaseSimpleActivity.isLosslessWebp(path: String): Boolean {
+    if (!path.isWebP()) {
+        return false
+    }
+    val header = readHeader(path, 64 * 1024) ?: return false
+    return header.containsAscii("VP8L") && !header.containsAscii("VP8 ")
 }
 
 @TargetApi(Build.VERSION_CODES.N)
 fun Activity.tryRotateByExif(path: String, degrees: Int, showToasts: Boolean, callback: () -> Unit): Boolean {
+    return tryRotateByExif(path, degrees, showToasts, true, callback)
+}
+
+@TargetApi(Build.VERSION_CODES.N)
+fun Activity.tryRotateByExif(path: String, degrees: Int, showToasts: Boolean, clearGlideCache: Boolean, callback: () -> Unit): Boolean {
     return try {
         val file = File(path)
         val oldLastModified = file.lastModified()
         if (saveImageRotation(path, degrees)) {
-            fileRotatedSuccessfully(path, oldLastModified)
+            fileRotatedSuccessfully(path, oldLastModified, clearGlideCache)
             callback.invoke()
             if (showToasts) {
                 toast(com.simplemobiletools.commons.R.string.file_saved)
@@ -946,7 +1267,7 @@ private fun BaseSimpleActivity.tryRewriteExifRotation(path: String, degrees: Int
     return try {
         saveExifRotation(ExifInterface(path), degrees)
         true
-    } catch (_: IOException) {
+    } catch (_: Exception) {
         false
     }
 }
@@ -1012,9 +1333,21 @@ private fun BaseSimpleActivity.writeRotatedBitmap(sourcePath: String, destPath: 
     val totalDegrees = ((existingDegrees + extraDegrees) % 360 + 360) % 360
     val targetBytes = File(sourcePath).length()
     val qualityGuess = peekJpegQuality(sourcePath)
-    val input = getFileInputStreamSync(sourcePath) ?: return false
     return try {
-        val bitmap = BitmapFactory.decodeStream(input) ?: return false
+        // The decode plus the rotated copy need two full bitmaps; sample down instead of crashing with OOM.
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        // a bounds-only decode always returns null, only the stream itself may be missing
+        val boundsInput = getFileInputStreamSync(sourcePath) ?: return false
+        boundsInput.use { BitmapFactory.decodeStream(it, null, bounds) }
+        val budget = Runtime.getRuntime().maxMemory() / 3
+        var sampleSize = 1
+        while (bounds.outWidth > 0 && bounds.outHeight > 0 &&
+            2L * 4L * (bounds.outWidth / sampleSize).toLong() * (bounds.outHeight / sampleSize).toLong() > budget
+        ) {
+            sampleSize *= 2
+        }
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        val bitmap = getFileInputStreamSync(sourcePath)?.use { BitmapFactory.decodeStream(it, null, options) } ?: return false
         val matrix = Matrix()
         matrix.postRotate(totalDegrees.toFloat())
         val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
@@ -1029,9 +1362,11 @@ private fun BaseSimpleActivity.writeRotatedBitmap(sourcePath: String, destPath: 
                 bitmap.recycle()
             }
         }
+        // keep date, GPS and camera tags; the pixels are rotated, the new file has no orientation tag
+        copyExifWithoutOrientation(sourcePath, destPath)
         true
-    } finally {
-        input.close()
+    } catch (_: Exception) {
+        false
     }
 }
 
@@ -1085,14 +1420,20 @@ private fun jpegBytes(bitmap: Bitmap, quality: Int): ByteArray {
     return out.toByteArray()
 }
 
-fun Activity.fileRotatedSuccessfully(path: String, lastModified: Long) {
+fun Activity.fileRotatedSuccessfully(path: String, lastModified: Long, clearGlideCache: Boolean = true) {
     if (config.keepLastModified && lastModified != 0L) {
         File(path).setLastModified(lastModified)
         updateLastModified(path, lastModified)
     }
 
     Picasso.get().invalidate(path.getFileKey(lastModified))
-    // we cannot refresh a specific image in Glide Cache, so just clear it all
+    if (clearGlideCache) {
+        clearGlideCaches()
+    }
+}
+
+// We cannot refresh a specific image in the Glide cache, so clear it all. Call it off the UI thread.
+fun Activity.clearGlideCaches() {
     val glide = Glide.get(applicationContext)
     glide.clearDiskCache()
     runOnUiThread {
@@ -1100,19 +1441,78 @@ fun Activity.fileRotatedSuccessfully(path: String, lastModified: Long) {
     }
 }
 
-fun BaseSimpleActivity.copyFile(source: String, destination: String) {
+/**
+ * Copies [source] over [destination]. Returns false (after a toast) when anything fails or the copy came out
+ * shorter than the source, so callers never report a truncated file as saved.
+ */
+fun BaseSimpleActivity.copyFile(source: String, destination: String): Boolean {
     var inputStream: InputStream? = null
     var out: OutputStream? = null
+    var copied = -1L
     try {
         out = getFileOutputStreamSync(destination, source.getMimeType())
         inputStream = getFileInputStreamSync(source)
-        inputStream!!.copyTo(out!!)
+        copied = inputStream!!.copyTo(out!!)
+        out.flush()
     } catch (e: Exception) {
         showErrorToast(e)
+        copied = -1L
     } finally {
-        inputStream?.close()
-        out?.close()
+        try {
+            inputStream?.close()
+        } catch (_: Exception) {
+        }
+        try {
+            out?.close()
+        } catch (_: Exception) {
+            copied = -1L
+        }
     }
+
+    if (copied < 0L) {
+        return false
+    }
+    val sourceFile = File(source)
+    return !sourceFile.isFile || sourceFile.length() == copied
+}
+
+/**
+ * Replaces [destination] with [source] without truncating it first when the folder is directly writable:
+ * the bytes go to a hidden sibling, are synced, then renamed over the destination. If the sibling can't even
+ * be created (SAF, scoped storage), falls back to [copyFile]. Returns false when the destination was not replaced.
+ */
+fun BaseSimpleActivity.replaceFileSafely(source: String, destination: String): Boolean {
+    val destFile = File(destination)
+    val parent = destFile.parentFile
+    if (parent != null && parent.canWrite() && !needsStupidWritePermissions(destination) && !isRestrictedSAFOnlyRoot(destination)) {
+        val sibling = File(parent, ".${destFile.name}.tmp${System.nanoTime()}")
+        var created = false
+        try {
+            FileInputStream(File(source)).use { input ->
+                FileOutputStream(sibling).use { out ->
+                    created = true
+                    input.copyTo(out)
+                    out.flush()
+                    out.fd.sync()
+                }
+            }
+            if (sibling.length() != File(source).length()) {
+                sibling.delete()
+                return false
+            }
+            if (sibling.renameTo(destFile)) {
+                return true
+            }
+            sibling.delete()
+        } catch (e: Exception) {
+            sibling.delete()
+            if (created) {
+                // ran out of space or similar while writing: the original is untouched, don't retry over it
+                return false
+            }
+        }
+    }
+    return copyFile(source, destination)
 }
 
 fun BaseSimpleActivity.ensureWriteAccess(path: String, callback: () -> Unit) {
@@ -1200,32 +1600,56 @@ fun BaseSimpleActivity.launchResizeImageDialog(path: String, callback: (() -> Un
     }
 }
 
+/**
+ * Encodes into memory and a private temp file first, then replaces [newPath]; the original is never truncated
+ * before the new image exists. Only jpg/png/webp targets are written, the encoder's format must match the name.
+ */
 fun BaseSimpleActivity.resizeImage(oldPath: String, newPath: String, size: Point, callback: (success: Boolean) -> Unit) {
-    var oldExif: ExifInterface? = null
-    if (isNougatPlus()) {
-        val inputStream = contentResolver.openInputStream(Uri.fromFile(File(oldPath)))
-        oldExif = ExifInterface(inputStream!!)
+    if (!newPath.canSaveRotatedAs()) {
+        callback(false)
+        return
     }
 
-    val newBitmap = Glide.with(applicationContext).asBitmap().load(oldPath).submit(size.x, size.y).get()
+    val tmpFile = File(recycleBinPath, ".tmp_resize_${System.nanoTime()}_${newPath.getFilenameFromPath()}")
+    val success = try {
+        val oldExif = try {
+            getFileInputStreamSync(oldPath)?.use { ExifInterface(it) }
+        } catch (_: Exception) {
+            null
+        }
 
-    val newFile = File(newPath)
-    val newFileDirItem = FileDirItem(newPath, newPath.getFilenameFromPath())
-    getFileOutputStream(newFileDirItem, true) { out ->
-        if (out != null) {
-            out.use {
+        val newBitmap = Glide.with(applicationContext).asBitmap().load(oldPath).submit(size.x, size.y).get()
+        val encoded = ByteArrayOutputStream().use { bytes ->
+            if (!newBitmap.compress(newPath.getCompressionFormat(), 90, bytes)) {
+                null
+            } else {
+                bytes.toByteArray()
+            }
+        }
+
+        if (encoded == null || encoded.isEmpty()) {
+            false
+        } else {
+            tmpFile.parentFile?.mkdirs()
+            FileOutputStream(tmpFile).use {
+                it.write(encoded)
+                it.flush()
+                it.fd.sync()
+            }
+            if (oldExif != null) {
                 try {
-                    newBitmap.compress(newFile.absolutePath.getCompressionFormat(), 90, it)
-                    writeExif(oldExif, exifUriForPath(newPath))
-                    callback(true)
-                } catch (e: Exception) {
-                    callback(false)
+                    oldExif.copyNonDimensionAttributesTo(ExifInterface(tmpFile.absolutePath))
+                } catch (_: Exception) {
                 }
             }
-        } else {
-            callback(false)
+            replaceFileSafely(tmpFile.absolutePath, newPath)
         }
+    } catch (e: Throwable) {
+        false
+    } finally {
+        tmpFile.delete()
     }
+    callback(success)
 }
 
 fun BaseSimpleActivity.rescanPathsAndUpdateLastModified(paths: ArrayList<String>, pathLastModifiedMap: Map<String, Long>, callback: () -> Unit) {
