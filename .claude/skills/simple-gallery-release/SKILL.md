@@ -13,11 +13,10 @@ If build locally always use the same github key, always update the readme with n
 ## Local builds
 
 - Sign with the GitHub keystore, never the Android debug key: `assembleFossRelease`.
-- Release APKs land in `app/build/outputs/apk/foss/release/` as:
-  `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk`,
-  `Tomato-Gallery_<version>-FOSS-armeabi-v7a.apk`,
-  `Tomato-Gallery_<version>-FOSS-x86_64.apk`,
-  `Tomato-Gallery_<version>-FOSS-universal.apk`.
+- Local builds are **arm64-v8a only**: one APK in `app/build/outputs/apk/foss/release/` named
+  `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk`. Do not assemble the other ABIs locally.
+- GitHub CI builds all four: `...-arm64-v8a.apk`, `...-armeabi-v7a.apk`, `...-x86_64.apk`,
+  and `...-FOSS-universal.apk`.
 - Key files (gitignored): `keystore.properties`, `app/keystore.jks`.
 - Keep copies: `D:\WEBSITES\PUTTY\simple-gallery-release.jks`, `.properties`, `.jks.b64`.
 - GitHub secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_PASSWORD`, `KEY_ALIAS` (`gallery`).
@@ -44,4 +43,4 @@ Preamble (signed FOSS APKs named `Tomato-Gallery_<version>-FOSS-<abi>.apk` for a
 
 Group related work under one number. Match the tone of the previous release: bold title, em dash, concrete behavior.
 
-Launcher name is `Gallery` (`app_launcher_name`). Debug source used to override that to `Gallery_debug` — do not bring that back. The debug APK filename `gallery-*-foss-debug.apk` is not the launcher label. Release APKs are `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk`, `...-armeabi-v7a.apk`, `...-x86_64.apk`, and `...-FOSS-universal.apk`.
+Launcher name is `Gallery` (`app_launcher_name`). Debug source used to override that to `Gallery_debug` — do not bring that back. The debug APK filename `gallery-*-foss-debug.apk` is not the launcher label. GitHub release APKs are `Tomato-Gallery_<version>-FOSS-arm64-v8a.apk`, `...-armeabi-v7a.apk`, `...-x86_64.apk`, and `...-FOSS-universal.apk`.
