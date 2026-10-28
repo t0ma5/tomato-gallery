@@ -26,6 +26,7 @@
 - Set as wallpaper no longer crashes when the launcher reports size 0
 - The unofficial-package warning shows once per app start
 - Widget setup waits for the lock; widgets size per id and open on tap without a thumbnail
+- Selecting several photos no longer turns their grid thumbnails black
 
 ## Version 1.1 *(2026-10-06)*
 

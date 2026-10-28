@@ -53,7 +53,6 @@ class MediaAdapter(
     private val config = activity.config
     private val viewType = config.getFolderViewType(if (config.showAll) SHOW_ALL else path)
     private val isListViewType = viewType == VIEW_TYPE_LIST
-    private var visibleItemPaths = HashSet<String>()
     private var rotatedImagePaths = ArrayList<String>()
     private var loadImageInstantly = false
     private var delayHandler = Handler(Looper.getMainLooper())
@@ -100,9 +99,6 @@ class MediaAdapter(
 
     override fun onBindViewHolder(holder: MyRecyclerViewAdapter.ViewHolder, position: Int) {
         val tmbItem = media.getOrNull(position) ?: return
-        if (tmbItem is Medium) {
-            visibleItemPaths.add(tmbItem.path)
-        }
 
         val allowLongPress = (!isAGetIntent || allowMultiplePicks) && tmbItem is Medium
         holder.bindView(tmbItem, tmbItem is Medium, allowLongPress) { itemView, adapterPosition ->
@@ -218,7 +214,6 @@ class MediaAdapter(
         super.onViewRecycled(holder)
         if (!activity.isDestroyed) {
             val itemView = holder.itemView
-            (itemView.allViews.firstOrNull { it.id == R.id.medium_name }?.tag as? String)?.let { visibleItemPaths.remove(it) }
             val tmb = itemView.allViews.firstOrNull { it.id == R.id.medium_thumbnail }
             if (tmb != null) {
                 tmb.setTag(R.id.medium_thumbnail, null)
@@ -926,8 +921,10 @@ class MediaAdapter(
                 else -> ROUNDED_CORNERS_BIG
             }
 
+            // Rebind of the same item (eg. selection toggle): let Glide reuse the shown bitmap, no clear + delay.
+            val isRebind = mediumThumbnail.getTag(R.id.medium_thumbnail) == medium.path
             mediumThumbnail.setTag(R.id.medium_thumbnail, medium.path)
-            if (loadImageInstantly) {
+            if (loadImageInstantly || isRebind) {
                 activity.loadImage(
                     medium.type, path, mediumThumbnail, scrollHorizontally, animateGifs, isListViewType || cropThumbnails, roundedCorners, medium.getKey(), rotatedImagePaths
                 )
@@ -938,16 +935,14 @@ class MediaAdapter(
                 mediumThumbnail.setImageDrawable(null)
                 mediumThumbnail.isHorizontalScrolling = scrollHorizontally
                 delayHandler.postDelayed({
+                    // Tag is nulled on recycle, so this alone says the view still shows this item.
                     if (mediumThumbnail.getTag(R.id.medium_thumbnail) != medium.path) {
                         return@postDelayed
                     }
-                    val isVisible = visibleItemPaths.contains(medium.path)
-                    if (isVisible) {
-                        activity.loadImage(
-                            medium.type, path, mediumThumbnail, scrollHorizontally, animateGifs, isListViewType || cropThumbnails, roundedCorners,
-                            medium.getKey(), rotatedImagePaths
-                        )
-                    }
+                    activity.loadImage(
+                        medium.type, path, mediumThumbnail, scrollHorizontally, animateGifs, isListViewType || cropThumbnails, roundedCorners,
+                        medium.getKey(), rotatedImagePaths
+                    )
                 }, IMAGE_LOAD_DELAY)
             }
 

@@ -230,6 +230,7 @@ jobs:
             2. **Wallpaper** — Launchers that report a 0 wallpaper size no longer crash Set as wallpaper.
             3. **Unofficial package warning** — Shows once per app start instead of on every return to Settings.
             4. **Widgets** — The setup screen shows nothing until the lock is passed. Each widget is sized on its own, and a folder without a thumbnail still opens on tap.
+            5. **Multi-select thumbnails** — Selecting several photos no longer turns their grid thumbnails black.
 
             ## New in 1.1
 
