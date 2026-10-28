@@ -1,0 +1,1 @@
+• Multi-select no longer turns grid thumbnails black

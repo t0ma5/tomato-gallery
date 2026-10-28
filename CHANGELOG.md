@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.2.1 *(2026-10-28)*
+
+- Selecting several photos no longer turns their grid thumbnails black
+
 ## Version 1.2 *(2026-10-24)*
 
 - Editor Overwrite and Resize write the new image atomically; a crash mid-save no longer empties the original
@@ -26,7 +30,6 @@
 - Set as wallpaper no longer crashes when the launcher reports size 0
 - The unofficial-package warning shows once per app start
 - Widget setup waits for the lock; widgets size per id and open on tap without a thumbnail
-- Selecting several photos no longer turns their grid thumbnails black
 
 ## Version 1.1 *(2026-10-06)*
 

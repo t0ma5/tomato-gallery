@@ -4,4 +4,3 @@
 • App lock asks again after the grace period; strip-on-share covers every item
 • Viewer More sheet keeps its actions; memory leaks and swipe-down glitches fixed
 • Faster show-all, search and sorting on large libraries
-• Multi-select no longer turns grid thumbnails black

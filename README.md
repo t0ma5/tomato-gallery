@@ -74,7 +74,7 @@ Release APKs come from `assembleFossRelease` (local and GitHub Actions). Names:
 
 | Item | Value |
 | --- | --- |
-| App version | 1.2 (versionCode 102) |
+| App version | 1.2.1 (versionCode 103) |
 | minSdk | 26 |
 | targetSdk / compileSdk | 36 (Android 16) |
 | JVM bytecode | 17 |

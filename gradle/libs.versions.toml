@@ -42,8 +42,8 @@ app-build-javaVersion = "VERSION_17"
 app-build-kotlinJVMTarget = "17"
 #versioning
 app-version-appId = "tomato.gallery"
-app-version-versionCode = "102"
-app-version-versionName = "1.2"
+app-version-versionCode = "103"
+app-version-versionName = "1.2.1"
 subsamplingScaleImageView = "80efdaa570"
 [libraries]
 #AndroidX
