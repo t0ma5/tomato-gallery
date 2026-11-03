@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.3 *(2026-11-03)*
+
+- With the Recycle Bin on, delete shows Undo instead of a confirmation (grid, search, viewer)
+- Launcher shortcuts for Favorites, Search and Recycle Bin
+- Widget uses the system corner radius on Android 12+ and has a live preview and description
+- TalkBack reads names, type, video length, favorite and selection on photos and folders; bigger tap area on the thumbnail star
+- Back closes search and leaves grouped subfolders again on Android 16; the editor and Customize colors ask about unsaved changes again
+
 ## Version 1.2.1 *(2026-10-28)*
 
 - Selecting several photos no longer turns their grid thumbnails black

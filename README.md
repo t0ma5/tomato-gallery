@@ -48,6 +48,9 @@ The original Simple Gallery Pro workflow, plus a new completely FOSS editor, OCR
 - **Properties** — Works on the Favorites and Recycle Bin folders.
 - **Tags** — Add or remove tags from the grid or viewer (tap × on a chip). Commas make separate tags. Search matches tag names.
 - **Duplicate finder** — Scan a folder (or all) and delete extra copies. Matches are confirmed with a full SHA-256, the list shows full paths, and you pick which copy to keep. Overflow item sits above Settings.
+- **Undo delete** — With the Recycle Bin on, delete moves the file at once and shows Undo instead of asking first. Deleting for good, or the last file in a folder, still asks.
+- **Launcher shortcuts** — Long-press the app icon for Favorites, Search, or Recycle Bin. They wait for the app lock.
+- **Widget** — Uses the system corner radius on Android 12+, with a live preview and a description in the widget picker.
 - **Android Trash** — Optional MediaStore trash on Android 11+ instead of the app Recycle Bin. Favorites also write `IS_FAVORITE` when the system allows it.
 
 **Private**
@@ -59,6 +62,9 @@ The original Simple Gallery Pro workflow, plus a new completely FOSS editor, OCR
 - **Fluid viewer** — Swipe down tracks the photo and springs closed or back. Open and back scale from the thumbnail. Viewer bars slide and keep the old gradient. Favorite, share, edit, and delete stay on the bar; the rest sit in a More sheet. Editor tools slide up from the icon that opened them. Grid tiles scale on press. Slideshow yields to a touch. Animator duration scale 0 uses fades only.
 - **Video end** — A video that plays to the end does not resume at the end next time. Double-tap skip shows a short chevron.
 - **Hide and unhide** — A second hide or unhide of the same file waits until the first rename finishes.
+
+**Accessibility**
+- **TalkBack** — Photos, videos and folders read their name, type, length, favorite and item count, and say when they are selected. The thumbnail favorite star has a label and a bigger tap area.
 
 **No nags**
 - No donation prompts.
@@ -74,7 +80,7 @@ Release APKs come from `assembleFossRelease` (local and GitHub Actions). Names:
 
 | Item | Value |
 | --- | --- |
-| App version | 1.2.1 (versionCode 103) |
+| App version | 1.3 (versionCode 104) |
 | minSdk | 26 |
 | targetSdk / compileSdk | 36 (Android 16) |
 | JVM bytecode | 17 |

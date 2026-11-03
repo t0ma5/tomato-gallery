@@ -1,0 +1,5 @@
+• Undo after moving files to the Recycle Bin
+• Launcher shortcuts: Favorites, Search, Recycle Bin
+• Widget follows the Android 12+ corner radius, live preview
+• TalkBack labels on photos and folders
+• Back closes search and subfolders again on Android 16
