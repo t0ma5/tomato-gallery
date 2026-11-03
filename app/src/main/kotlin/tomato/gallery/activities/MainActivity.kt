@@ -14,6 +14,7 @@ import android.provider.MediaStore.Video
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.RecyclerView
 import com.simplemobiletools.commons.dialogs.ConfirmationDialog
@@ -47,6 +48,11 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     companion object {
         private const val LAST_MEDIA_CHECK_PERIOD = 3000L
         private const val ADAPTER_REFRESH_MS = 500L
+
+        // launcher shortcuts, see res/xml/shortcuts.xml
+        private const val ACTION_OPEN_FAVORITES = "tomato.gallery.action.OPEN_FAVORITES"
+        private const val ACTION_OPEN_RECYCLE_BIN = "tomato.gallery.action.OPEN_RECYCLE_BIN"
+        private const val ACTION_OPEN_SEARCH = "tomato.gallery.action.OPEN_SEARCH"
     }
 
     private var mIsPickImageIntent = false
@@ -62,6 +68,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     private var mIsPasswordProtectionPending = false
     private var mShouldStopFetching = false
     private var mWasDefaultFolderChecked = false
+    private var mShortcutAction: String? = null
     private var mWasMediaManagementPromptShown = false
     private var mLatestMediaId = 0L
     private var mLatestMediaDateId = 0L
@@ -107,6 +114,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
             removeTempFolder()
             checkRecycleBinItems()
             startNewPhotoFetcher()
+            mShortcutAction = intent.action
         }
 
         mIsPickImageIntent = isPickImageIntent(intent)
@@ -121,6 +129,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
         setupOptionsMenu()
         refreshMenuItems()
+        onBackPressedDispatcher.addCallback(this, backCallback)
 
         updateMaterialActivityViews(
             binding.directoriesCoordinator,
@@ -205,6 +214,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     override fun onResume() {
         super.onResume()
         updateMenuColors()
+        updateBackCallback()
         config.isThirdPartyIntent = false
         mDateFormat = config.dateFormat
         mTimeFormat = getTimeFormat()
@@ -305,20 +315,26 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         }
     }
 
-    override fun onBackPressed() {
-        if (binding.mainMenu.isSearchOpen) {
-            binding.mainMenu.closeSearch()
-        } else if (config.groupDirectSubfolders) {
-            if (mCurrentPathPrefix.isEmpty()) {
-                super.onBackPressed()
-            } else {
+    // targetSdk 36 never calls onBackPressed(), so back is handled by a callback that is enabled only
+    // while there is a search or a subfolder to close. Otherwise the system closes the app with its preview.
+    private val backCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            if (binding.mainMenu.isSearchOpen) {
+                binding.mainMenu.closeSearch()
+            } else if (config.groupDirectSubfolders && mCurrentPathPrefix.isNotEmpty()) {
                 mOpenedSubfolders.removeLast()
                 mCurrentPathPrefix = mOpenedSubfolders.last()
                 setupAdapter(mDirs)
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
             }
-        } else {
-            super.onBackPressed()
+            updateBackCallback()
         }
+    }
+
+    private fun updateBackCallback() {
+        backCallback.isEnabled = binding.mainMenu.isSearchOpen || (config.groupDirectSubfolders && mCurrentPathPrefix.isNotEmpty())
     }
 
     private fun handlePickedMedia(resultData: Intent) {
@@ -372,9 +388,14 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         binding.mainMenu.setupMenu()
 
         binding.mainMenu.onSearchOpenListener = {
+            updateBackCallback()
             if (config.searchAllFilesByDefault) {
                 launchSearchActivity()
             }
+        }
+
+        binding.mainMenu.onSearchClosedListener = {
+            updateBackCallback()
         }
 
         binding.mainMenu.onSearchTextChangedListener = { text ->
@@ -485,7 +506,10 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 }
 
                 if (!mWasDefaultFolderChecked) {
-                    openDefaultFolder()
+                    // a launcher shortcut wins over the default folder
+                    if (!isShortcutPending()) {
+                        openDefaultFolder()
+                    }
                     mWasDefaultFolderChecked = true
                 }
 
@@ -499,6 +523,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 }
 
                 setupLayoutManager()
+                openShortcutTarget()
             } else {
                 toast(com.simplemobiletools.commons.R.string.no_storage_permissions)
                 finish()
@@ -1240,6 +1265,20 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         refreshMenuItems()
     }
 
+    private fun isShortcutPending() =
+        mShortcutAction == ACTION_OPEN_FAVORITES || mShortcutAction == ACTION_OPEN_RECYCLE_BIN || mShortcutAction == ACTION_OPEN_SEARCH
+
+    // Runs after the app lock and the storage permission, and opens folders through itemClicked so folder locks apply too
+    private fun openShortcutTarget() {
+        val action = mShortcutAction
+        mShortcutAction = null
+        when (action) {
+            ACTION_OPEN_FAVORITES -> itemClicked(FAVORITES)
+            ACTION_OPEN_RECYCLE_BIN -> itemClicked(RECYCLE_BIN)
+            ACTION_OPEN_SEARCH -> launchSearchActivity()
+        }
+    }
+
     private fun openDefaultFolder() {
         if (config.defaultFolder.isEmpty()) {
             return
@@ -1424,6 +1463,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                     mCurrentPathPrefix = path
                     mOpenedSubfolders.add(path)
                     setupAdapter(mDirs, "")
+                    updateBackCallback()
                 }
             }.apply {
                 setupZoomListener(mZoomListener)

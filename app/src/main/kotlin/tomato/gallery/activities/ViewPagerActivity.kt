@@ -1350,6 +1350,9 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                 }
             } else if (config.tempSkipDeleteConfirmation || config.skipDeleteConfirmation) {
                 deleteConfirmed(config.tempSkipRecycleBin)
+            } else if (canUndoRecycleBinMove(getCurrentMedium()!!.getIsInRecycleBin()) && mMediaFiles.size > 1) {
+                // Undo instead of a dialog; the last item closes the viewer and the Undo with it, so that still asks
+                deleteConfirmed(false)
             } else {
                 askConfirmDelete()
             }
@@ -1433,13 +1436,21 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                     onPageSelected(0)
                 }
 
-                movePathsInRecycleBin(arrayListOf(path)) {
+                val binPaths = ArrayList<String>()
+                movePathsInRecycleBin(arrayListOf(path), binPaths) {
                     if (it) {
                         tryDeleteFileDirItem(fileDirItem, false, false) {
                             mIgnoredPaths.remove(fileDirItem.path)
                             if (media.isEmpty()) {
                                 deleteDirectoryIfEmpty()
                                 finish()
+                            } else {
+                                // in fullscreen the bar is slid off screen, an anchor there would push the Snackbar off too
+                                val anchor = if (mIsFullScreen) null else binding.bottomActions.root
+                                showRecycleBinUndo(binPaths, anchor) {
+                                    mPath = path
+                                    refreshViewPager(refetchPosition = true)
+                                }
                             }
                         }
                     } else {

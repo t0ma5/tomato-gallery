@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">Перемещено в корзину</string>
+    <string name="widget_description">Показывает папку на главном экране и открывает её касанием</string>
+    <string name="a11y_video">Видео</string>
+    <string name="a11y_favorite">Избранное</string>
+    <string name="a11y_selected">Выбрано</string>
+    <string name="a11y_not_selected">Не выбрано</string>
+    <string name="a11y_stacked_files">Файлов в стопке: %d</string>
+</resources>

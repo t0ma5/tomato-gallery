@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: a live preview in the widget picker and a short description -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="tomato.gallery.activities.WidgetConfigureActivity"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/widget"
+    android:minWidth="@dimen/widget_initial_size"
+    android:minHeight="40dp"
+    android:minResizeWidth="40dp"
+    android:minResizeHeight="40dp"
+    android:previewImage="@drawable/img_widget_preview"
+    android:previewLayout="@layout/widget_preview"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1" />

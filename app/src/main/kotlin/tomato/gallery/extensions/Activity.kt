@@ -23,6 +23,7 @@ import android.provider.MediaStore.Files
 import android.provider.MediaStore.Images
 import android.provider.Settings
 import android.util.DisplayMetrics
+import android.view.View
 import android.view.Window
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
@@ -33,6 +34,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
+import com.google.android.material.snackbar.Snackbar
 import com.simplemobiletools.commons.activities.BaseSimpleActivity
 import com.simplemobiletools.commons.dialogs.ConfirmationDialog
 import com.simplemobiletools.commons.dialogs.SecurityDialog
@@ -616,16 +618,21 @@ fun BaseSimpleActivity.tryDeleteFileDirItem(
  * already copied are taken back out of the bin (copy deleted, rows reverted) and the callback gets false,
  * so no original is deleted while its row points at the bin.
  */
-fun BaseSimpleActivity.movePathsInRecycleBin(paths: ArrayList<String>, callback: ((wasSuccess: Boolean) -> Unit)?) {
+fun BaseSimpleActivity.movePathsInRecycleBin(
+    paths: ArrayList<String>,
+    binPaths: ArrayList<String>? = null,
+    callback: ((wasSuccess: Boolean) -> Unit)?
+) {
     if (shouldUseSystemTrash()) {
         trashPathsWithSystem(paths, callback)
         return
     }
-    movePathsInRecycleBinPartially(paths) { moved ->
+    movePathsInRecycleBinPartially(paths, binPaths) { moved ->
         if (moved.size == paths.size) {
             callback?.invoke(true)
         } else {
             ensureBackgroundThread {
+                binPaths?.clear()
                 moved.forEach { undoRecycleBinCopy(it) }
                 callback?.invoke(false)
             }
@@ -636,9 +643,14 @@ fun BaseSimpleActivity.movePathsInRecycleBin(paths: ArrayList<String>, callback:
 /**
  * Copies each path into the app's recycle bin and points its media row (inserted when missing) and tags at
  * the bin copy. [callback] gets the original paths that were copied successfully, on a background thread:
- * only those originals may be deleted. Does not handle the system trash, check [shouldUseSystemTrash] first.
+ * only those originals may be deleted. [binPaths], when given, gets the bin copy of each moved path, for Undo.
+ * Does not handle the system trash, check [shouldUseSystemTrash] first.
  */
-fun BaseSimpleActivity.movePathsInRecycleBinPartially(paths: ArrayList<String>, callback: (movedPaths: ArrayList<String>) -> Unit) {
+fun BaseSimpleActivity.movePathsInRecycleBinPartially(
+    paths: ArrayList<String>,
+    binPaths: ArrayList<String>? = null,
+    callback: (movedPaths: ArrayList<String>) -> Unit
+) {
     ensureBackgroundThread {
         val moved = ArrayList<String>()
         val OTGPath = config.OTGPath
@@ -686,6 +698,7 @@ fun BaseSimpleActivity.movePathsInRecycleBinPartially(paths: ArrayList<String>, 
                 }
                 tagsDB.updatePath(oldPath = source, newPath = binKey)
                 moved.add(source)
+                binPaths?.add(internalFile.absolutePath)
             } catch (e: Exception) {
                 internalFile.delete()
                 if (!shownError) {
@@ -739,6 +752,33 @@ private fun BaseSimpleActivity.undoRecycleBinCopy(source: String) {
         mediaDB.updateDeleted(source, 0, row.path)
         tagsDB.updatePath(oldPath = row.path, newPath = source)
     } catch (_: Exception) {
+    }
+}
+
+// A bin move can be undone from a Snackbar instead of a confirmation dialog. Not with the system trash,
+// which shows its own dialog, and not for files already in the bin, which are deleted for good.
+fun BaseSimpleActivity.canUndoRecycleBinMove(isInRecycleBin: Boolean) =
+    config.useRecycleBin && !config.tempSkipRecycleBin && !isInRecycleBin && !shouldUseSystemTrash()
+
+/**
+ * Shows "Moved to the Recycle Bin" with Undo. [binPaths] are the bin copies from [movePathsInRecycleBin],
+ * call this only once the originals are deleted. Undo restores them and then calls [onRestored] on the UI thread.
+ */
+fun BaseSimpleActivity.showRecycleBinUndo(binPaths: ArrayList<String>, anchor: View? = null, onRestored: () -> Unit) {
+    val paths = ArrayList(binPaths)
+    runOnUiThread {
+        if (paths.isEmpty() || isFinishing || isDestroyed) {
+            return@runOnUiThread
+        }
+
+        Snackbar.make(findViewById(android.R.id.content), R.string.moved_to_recycle_bin, Snackbar.LENGTH_LONG).apply {
+            setAction(com.simplemobiletools.commons.R.string.undo) {
+                restoreRecycleBinPaths(paths, onRestored)
+            }
+            if (anchor != null && anchor.visibility == View.VISIBLE) {
+                setAnchorView(anchor)
+            }
+        }.show()
     }
 }
 

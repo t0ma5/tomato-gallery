@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">In den Papierkorb verschoben</string>
+    <string name="widget_description">Zeigt einen Ordner auf dem Startbildschirm und öffnet ihn per Tippen</string>
+    <string name="a11y_video">Video</string>
+    <string name="a11y_favorite">Favorit</string>
+    <string name="a11y_selected">Ausgewählt</string>
+    <string name="a11y_not_selected">Nicht ausgewählt</string>
+    <string name="a11y_stacked_files">%d gestapelte Dateien</string>
+</resources>

@@ -317,12 +317,12 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
         }
 
         if (config.useRecycleBin && !skipRecycleBin && !filtered.first().path.startsWith(recycleBinPath)) {
-            val movingItems = resources.getQuantityString(com.simplemobiletools.commons.R.plurals.moving_items_into_bin, filtered.size, filtered.size)
-            toast(movingItems)
-
-            movePathsInRecycleBin(filtered.map { it.path } as ArrayList<String>) {
+            val binPaths = ArrayList<String>()
+            movePathsInRecycleBin(filtered.map { it.path } as ArrayList<String>, binPaths) {
                 if (it) {
-                    deleteFilteredFiles(filtered)
+                    deleteFilteredFiles(filtered) {
+                        showRecycleBinUndo(binPaths) { refreshItems() }
+                    }
                 } else {
                     toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
                 }
@@ -334,7 +334,7 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
         }
     }
 
-    private fun deleteFilteredFiles(filtered: ArrayList<FileDirItem>) {
+    private fun deleteFilteredFiles(filtered: ArrayList<FileDirItem>, onDeleted: (() -> Unit)? = null) {
         deleteFiles(filtered) {
             if (!it) {
                 toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
@@ -352,6 +352,7 @@ class SearchActivity : SimpleActivity(), MediaOperationsListener {
                     }
                 }
             }
+            onDeleted?.invoke()
         }
     }
 

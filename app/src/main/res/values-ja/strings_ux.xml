@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">ごみ箱に移動しました</string>
+    <string name="widget_description">ホーム画面にフォルダを表示し、タップで開きます</string>
+    <string name="a11y_video">動画</string>
+    <string name="a11y_favorite">お気に入り</string>
+    <string name="a11y_selected">選択済み</string>
+    <string name="a11y_not_selected">未選択</string>
+    <string name="a11y_stacked_files">スタックされたファイル %d 件</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">Déplacé dans la corbeille</string>
+    <string name="widget_description">Affiche un dossier sur l’écran d’accueil et l’ouvre d’un appui</string>
+    <string name="a11y_video">Vidéo</string>
+    <string name="a11y_favorite">Favori</string>
+    <string name="a11y_selected">Sélectionné</string>
+    <string name="a11y_not_selected">Non sélectionné</string>
+    <string name="a11y_stacked_files">%d fichiers empilés</string>
+</resources>

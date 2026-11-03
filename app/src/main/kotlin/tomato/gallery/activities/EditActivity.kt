@@ -114,6 +114,24 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
     private var adjustPreviewBitmap: Bitmap? = null
     private var overwriteRequested = false
     private var hasUnsavedEdits = false
+        set(value) {
+            field = value
+            // Only intercept back while there is something to lose, so the predictive back preview still works
+            runOnUiThread { unsavedEditsBackCallback.isEnabled = value }
+        }
+    private val unsavedEditsBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            ConfirmationDialog(
+                this@EditActivity,
+                "",
+                R.string.discard_unsaved_edits,
+                com.simplemobiletools.commons.R.string.yes,
+                com.simplemobiletools.commons.R.string.no
+            ) {
+                finish()
+            }
+        }
+    }
     private val editorDecodeSize = 4096
     private var trustedRealPath: String? = null
     private val filterPreviewExecutor = Executors.newSingleThreadExecutor()
@@ -150,23 +168,7 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
                     finish()
                     return@ensureAppUnlocked
                 }
-                onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-                    override fun handleOnBackPressed() {
-                        if (hasUnsavedEdits) {
-                            ConfirmationDialog(
-                                this@EditActivity,
-                                "",
-                                R.string.discard_unsaved_edits,
-                                com.simplemobiletools.commons.R.string.yes,
-                                com.simplemobiletools.commons.R.string.no
-                            ) {
-                                finish()
-                            }
-                        } else {
-                            finish()
-                        }
-                    }
-                })
+                onBackPressedDispatcher.addCallback(this, unsavedEditsBackCallback)
             }
         }
     }

@@ -52,7 +52,7 @@ class MyWidgetProvider : AppWidgetProvider() {
                 val path = context.directoryDB.getDirectoryThumbnail(it.folderPath)
                 if (path == null) {
                     // No thumbnail yet (empty or unscanned album): still make the widget open the album
-                    setupAppOpenIntent(context, views, R.id.widget_holder, it)
+                    setupAppOpenIntent(context, views, android.R.id.background, it)
                     try {
                         appWidgetManager.updateAppWidget(it.widgetId, views)
                     } catch (ignored: Exception) {
@@ -61,7 +61,7 @@ class MyWidgetProvider : AppWidgetProvider() {
                 }
                 if (context.config.isFolderProtected(it.folderPath) || context.config.isPathInProtectedFolder(it.folderPath)) {
                     views.setImageViewResource(R.id.widget_imageview, com.simplemobiletools.commons.R.drawable.ic_lock_vector)
-                    setupAppOpenIntent(context, views, R.id.widget_holder, it)
+                    setupAppOpenIntent(context, views, android.R.id.background, it)
                     try {
                         appWidgetManager.updateAppWidget(it.widgetId, views)
                     } catch (ignored: Exception) {
@@ -96,7 +96,7 @@ class MyWidgetProvider : AppWidgetProvider() {
                 } catch (e: Exception) {
                 }
 
-                setupAppOpenIntent(context, views, R.id.widget_holder, it)
+                setupAppOpenIntent(context, views, android.R.id.background, it)
 
                 try {
                     appWidgetManager.updateAppWidget(it.widgetId, views)

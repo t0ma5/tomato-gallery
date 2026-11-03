@@ -3,13 +3,16 @@ package tomato.gallery.adapters
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
+import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Handler
 import android.os.Looper
 import android.view.Menu
+import android.view.TouchDelegate
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.ViewCompat
 import androidx.core.view.allViews
 import com.bumptech.glide.Glide
 import com.qtalk.recyclerviewfastscroller.RecyclerViewFastScroller
@@ -640,10 +643,19 @@ class MediaAdapter(
                 }
             } else if (config.tempSkipDeleteConfirmation || config.skipDeleteConfirmation) {
                 deleteFiles(config.tempSkipRecycleBin)
+            } else if (canUndoDelete()) {
+                deleteFiles(false)
             } else {
                 askConfirmDelete()
             }
         }
+    }
+
+    // A bin move gets Undo instead of a dialog. Emptying the folder closes it and the Undo with it, so that still asks.
+    private fun canUndoDelete(): Boolean {
+        val firstPath = getFirstSelectedItemPath() ?: return false
+        val emptiesFolder = selectedKeys.size >= media.count { it is Medium }
+        return activity.canUndoRecycleBinMove(firstPath.startsWith(activity.recycleBinPath)) && !emptiesFolder
     }
 
     private fun askConfirmDelete() {
@@ -840,6 +852,8 @@ class MediaAdapter(
                     if (medium.isFavorite) com.simplemobiletools.commons.R.drawable.ic_star_vector
                     else com.simplemobiletools.commons.R.drawable.ic_star_outline_vector
                 )
+                favorite.contentDescription = getFavoriteToggleDescription(medium.isFavorite)
+                expandFavoriteTouchArea(favorite)
                 favorite.setOnClickListener {
                     val add = !medium.isFavorite
                     medium.isFavorite = add
@@ -847,6 +861,8 @@ class MediaAdapter(
                         if (add) com.simplemobiletools.commons.R.drawable.ic_star_vector
                         else com.simplemobiletools.commons.R.drawable.ic_star_outline_vector
                     )
+                    favorite.contentDescription = getFavoriteToggleDescription(add)
+                    view.contentDescription = getMediumDescription(medium)
                     FluidMotion.confirmHaptic(favorite)
                     ensureBackgroundThread {
                         activity.updateFavorite(medium.path, add)
@@ -857,6 +873,7 @@ class MediaAdapter(
                 }
             } else {
                 favorite.setOnClickListener(null)
+                (favorite.parent as? View)?.touchDelegate = null
             }
 
             playPortraitOutline?.beVisibleIf(medium.isVideo() || medium.isPortrait())
@@ -909,6 +926,9 @@ class MediaAdapter(
             if (isListViewType) {
                 mediaItemHolder.isSelected = isSelected
             }
+
+            view.contentDescription = getMediumDescription(medium)
+            ViewCompat.setStateDescription(view, getSelectionStateDescription(isSelected))
 
             var path = medium.path
             if (hasOTGConnected && root.context.isPathOnOTG(path)) {
@@ -967,6 +987,48 @@ class MediaAdapter(
         }
 
         return (media[realIndex] as? Medium)?.getBubbleText(sorting, activity, dateFormat, timeFormat) ?: ""
+    }
+
+    // TalkBack reads one line per item instead of an unlabeled thumbnail
+    private fun getMediumDescription(medium: Medium): String {
+        val parts = arrayListOf(medium.name)
+        if (medium.isVideo()) {
+            parts.add(activity.getString(R.string.a11y_video))
+            if (medium.videoDuration > 0) {
+                parts.add(medium.videoDuration.getFormattedDuration())
+            }
+        }
+        if (medium.isFavorite && !medium.getIsInRecycleBin()) {
+            parts.add(activity.getString(R.string.a11y_favorite))
+        }
+        if (medium.stackMembers.size > 1) {
+            parts.add(activity.getString(R.string.a11y_stacked_files, medium.stackMembers.size))
+        }
+        return parts.joinToString(", ")
+    }
+
+    // "Not selected" only while selecting, otherwise TalkBack would say it on every item
+    private fun getSelectionStateDescription(isSelected: Boolean) = when {
+        isSelected -> activity.getString(R.string.a11y_selected)
+        selectedKeys.isNotEmpty() -> activity.getString(R.string.a11y_not_selected)
+        else -> null
+    }
+
+    private fun getFavoriteToggleDescription(isFavorite: Boolean) = activity.getString(
+        if (isFavorite) com.simplemobiletools.commons.R.string.remove_from_favorites else com.simplemobiletools.commons.R.string.add_to_favorites
+    )
+
+    // The 26dp star takes taps 8dp around it, 42dp in all. A full 48dp would eat too much of a small grid cell,
+    // where a tap should open the photo.
+    private fun expandFavoriteTouchArea(favorite: View) {
+        val parent = favorite.parent as? View ?: return
+        parent.post {
+            val area = Rect()
+            favorite.getHitRect(area)
+            val extra = (8 * activity.resources.displayMetrics.density).toInt()
+            area.inset(-extra, -extra)
+            parent.touchDelegate = TouchDelegate(area, favorite)
+        }
     }
 
     private fun bindItem(view: View, medium: Medium): MediaItemBinding {

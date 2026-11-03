@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
 import android.widget.RelativeLayout
+import androidx.activity.OnBackPressedCallback
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -110,6 +111,7 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
 
         setupOptionsMenu()
         refreshMenuItems()
+        onBackPressedDispatcher.addCallback(this, closeSearchBackCallback)
         storeStateVariables()
         discardStaleStaticMedia()
         updateMaterialActivityViews(binding.mediaCoordinator, binding.mediaGrid, useTransparentNavigation = !config.scrollHorizontally, useTopSearchMenu = true)
@@ -278,11 +280,10 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         }
     }
 
-    override fun onBackPressed() {
-        if (binding.mediaMenu.isSearchOpen) {
+    // targetSdk 36 never calls onBackPressed(), so back closes search through a callback enabled only while search is open
+    private val closeSearchBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
             binding.mediaMenu.closeSearch()
-        } else {
-            super.onBackPressed()
         }
     }
 
@@ -335,6 +336,8 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         binding.mediaMenu.getToolbar().inflateMenu(R.menu.menu_media)
         binding.mediaMenu.toggleHideOnScroll(!config.scrollHorizontally)
         binding.mediaMenu.setupMenu()
+        binding.mediaMenu.onSearchOpenListener = { closeSearchBackCallback.isEnabled = true }
+        binding.mediaMenu.onSearchClosedListener = { closeSearchBackCallback.isEnabled = false }
 
         binding.mediaMenu.onSearchTextChangedListener = { text ->
             mLastSearchedText = text
@@ -1096,11 +1099,9 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         }
 
         if (config.useRecycleBin && !skipRecycleBin && !filtered.first().path.startsWith(recycleBinPath)) {
-            val movingItems = resources.getQuantityString(com.simplemobiletools.commons.R.plurals.moving_items_into_bin, filtered.size, filtered.size)
-            toast(movingItems)
-
             // delete only the originals whose bin copy succeeded
-            movePathsInRecycleBinPartially(filtered.map { it.path } as ArrayList<String>) { moved ->
+            val binPaths = ArrayList<String>()
+            movePathsInRecycleBinPartially(filtered.map { it.path } as ArrayList<String>, binPaths) { moved ->
                 val movedSet = moved.toHashSet()
                 val movedItems = filtered.filter { movedSet.contains(it.path) } as ArrayList<FileDirItem>
                 runOnUiThread {
@@ -1110,7 +1111,10 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
                         refreshItems()
                     }
                     if (movedItems.isNotEmpty()) {
-                        deleteFilteredFiles(movedItems)
+                        // Undo only once the originals are gone, or the restore would land next to them as a renamed copy
+                        deleteFilteredFiles(movedItems) {
+                            showRecycleBinUndo(binPaths) { refreshItems() }
+                        }
                     }
                 }
             }
@@ -1123,7 +1127,7 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
 
     private fun shouldSkipAuthentication() = intent.getBooleanExtra(SKIP_AUTHENTICATION, false)
 
-    private fun deleteFilteredFiles(filtered: ArrayList<FileDirItem>) {
+    private fun deleteFilteredFiles(filtered: ArrayList<FileDirItem>, onDeleted: (() -> Unit)? = null) {
         deleteFiles(filtered) {
             if (!it) {
                 toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
@@ -1146,6 +1150,8 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
                 deleteDirectoryIfEmpty()
                 deleteDBDirectory()
                 finish()
+            } else {
+                onDeleted?.invoke()
             }
         }
     }

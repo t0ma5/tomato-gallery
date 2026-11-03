@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview (Android 12+), same look as layout/widget with fixed content -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.67"
+        android:importantForAccessibility="no"
+        android:src="@drawable/widget_round_background" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/widget_preview_folder_name"
+        android:layout_centerInParent="true"
+        android:importantForAccessibility="no"
+        android:paddingLeft="@dimen/tiny_margin"
+        android:paddingTop="@dimen/small_margin"
+        android:paddingRight="@dimen/tiny_margin"
+        android:paddingBottom="@dimen/small_margin"
+        android:src="@mipmap/ic_launcher" />
+
+    <TextView
+        android:id="@+id/widget_preview_folder_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:lines="1"
+        android:padding="@dimen/tiny_margin"
+        android:text="@string/app_launcher_name"
+        android:textColor="@color/color_primary"
+        android:textSize="@dimen/bigger_text_size" />
+
+</RelativeLayout>

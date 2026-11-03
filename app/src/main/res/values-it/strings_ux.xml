@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">Spostato nel cestino</string>
+    <string name="widget_description">Mostra una cartella nella schermata Home e la apre con un tocco</string>
+    <string name="a11y_video">Video</string>
+    <string name="a11y_favorite">Preferito</string>
+    <string name="a11y_selected">Selezionato</string>
+    <string name="a11y_not_selected">Non selezionato</string>
+    <string name="a11y_stacked_files">%d file raggruppati</string>
+</resources>

@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.RelativeLayout
 import androidx.annotation.RequiresApi
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -817,6 +818,19 @@ class DirectoryAdapter(
             if (isListViewType) {
                 dirHolder.isSelected = isSelected
             }
+
+            // TalkBack reads "name, N items" for the whole card instead of an unlabeled thumbnail
+            val itemsCount = activity.resources.getQuantityString(
+                com.simplemobiletools.commons.R.plurals.items, directory.subfoldersMediaCount, directory.subfoldersMediaCount
+            )
+            view.contentDescription = "${directory.name}, $itemsCount"
+            ViewCompat.setStateDescription(
+                view, when {
+                    isSelected -> activity.getString(R.string.a11y_selected)
+                    selectedKeys.isNotEmpty() -> activity.getString(R.string.a11y_not_selected)
+                    else -> null
+                }
+            )
 
             if (scrollHorizontally && !isListViewType && folderStyle == FOLDER_STYLE_ROUNDED_CORNERS) {
                 (dirThumbnail.layoutParams as RelativeLayout.LayoutParams).addRule(RelativeLayout.ABOVE, dirName.id)

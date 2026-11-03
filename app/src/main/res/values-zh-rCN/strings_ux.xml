@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">已移至回收站</string>
+    <string name="widget_description">在主屏幕上显示一个文件夹，点按即可打开</string>
+    <string name="a11y_video">视频</string>
+    <string name="a11y_favorite">收藏</string>
+    <string name="a11y_selected">已选择</string>
+    <string name="a11y_not_selected">未选择</string>
+    <string name="a11y_stacked_files">%d 个堆叠文件</string>
+</resources>

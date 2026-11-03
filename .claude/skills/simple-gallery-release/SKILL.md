@@ -22,6 +22,17 @@ If build locally always use the same github key, always update the readme with n
 - GitHub secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_PASSWORD`, `KEY_ALIAS` (`gallery`).
 - JDK 25 + `GRADLE_USER_HOME=D:\software\gradle-home`. Do not download JDK 17.
 
+## CI: one build per release, never two
+
+`.github/workflows/build.yml` builds on master pushes and on `v*` tags. Keep it to one build per release:
+
+- The release commit message starts with `Release ` (e.g. `Release 1.3 with ...`). The build job skips a master push whose head commit starts with `Release `; the `v*` tag push builds and publishes it.
+- Push the release commit and its tag together: `git push origin master v<version>`. Never push the tag later as a separate step, and never push the release commit without its tag (then nothing builds).
+- Docs-only pushes (`**.md`, `fastlane/**`, `.claude/**`, `graphics/**`) don't build (`paths-ignore`).
+- Commits that only touch CI or other non-app files and must not build: add `[skip ci]` to the message.
+- Version bumps: patch (`1.2.1`) for fixes only; minor (`1.3`) when users get anything new.
+- No agent attribution in commits, tags or releases.
+
 ## README and GitHub Release
 
 When you add a user-visible feature:

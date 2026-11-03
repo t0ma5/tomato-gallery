@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher long-press shortcuts. MainActivity handles each action after the app lock. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/shortcut_launcher_favorites"
+        android:shortcutId="favorites"
+        android:shortcutShortLabel="@string/favorites">
+        <intent
+            android:action="tomato.gallery.action.OPEN_FAVORITES"
+            android:targetClass="tomato.gallery.activities.MainActivity"
+            android:targetPackage="tomato.gallery" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/shortcut_launcher_search"
+        android:shortcutId="search"
+        android:shortcutShortLabel="@string/search">
+        <intent
+            android:action="tomato.gallery.action.OPEN_SEARCH"
+            android:targetClass="tomato.gallery.activities.MainActivity"
+            android:targetPackage="tomato.gallery" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/shortcut_launcher_recycle_bin"
+        android:shortcutId="recycle_bin"
+        android:shortcutShortLabel="@string/recycle_bin">
+        <intent
+            android:action="tomato.gallery.action.OPEN_RECYCLE_BIN"
+            android:targetClass="tomato.gallery.activities.MainActivity"
+            android:targetPackage="tomato.gallery" />
+    </shortcut>
+</shortcuts>

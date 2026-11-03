@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">Moved to the Recycle Bin</string>
+    <string name="widget_description">Shows a folder on your home screen and opens it with a tap</string>
+    <string name="a11y_video">Video</string>
+    <string name="a11y_favorite">Favorite</string>
+    <string name="a11y_selected">Selected</string>
+    <string name="a11y_not_selected">Not selected</string>
+    <string name="a11y_stacked_files">%d stacked files</string>
+</resources>

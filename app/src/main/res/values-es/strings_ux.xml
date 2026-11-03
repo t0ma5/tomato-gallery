@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">Movido a la papelera de reciclaje</string>
+    <string name="widget_description">Muestra una carpeta en la pantalla de inicio y la abre con un toque</string>
+    <string name="a11y_video">Vídeo</string>
+    <string name="a11y_favorite">Favorito</string>
+    <string name="a11y_selected">Seleccionado</string>
+    <string name="a11y_not_selected">No seleccionado</string>
+    <string name="a11y_stacked_files">%d archivos apilados</string>
+</resources>

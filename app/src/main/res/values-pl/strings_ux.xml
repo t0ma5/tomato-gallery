@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moved_to_recycle_bin">Przeniesiono do kosza</string>
+    <string name="widget_description">Pokazuje folder na ekranie głównym i otwiera go po dotknięciu</string>
+    <string name="a11y_video">Wideo</string>
+    <string name="a11y_favorite">Ulubione</string>
+    <string name="a11y_selected">Zaznaczono</string>
+    <string name="a11y_not_selected">Nie zaznaczono</string>
+    <string name="a11y_stacked_files">Pliki w stosie: %d</string>
+</resources>
