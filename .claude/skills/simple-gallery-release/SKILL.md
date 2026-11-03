@@ -43,7 +43,7 @@ When you add a user-visible feature:
 
 Every GitHub Release **must** include a user-facing change list in `body:`, in the same numbered style as 6.30. Do not ship a tag with only auto-generated git notes. Keep `generate_release_notes: true` if you want the commit log underneath, but the numbered list is required.
 
-Preamble (signed FOSS APKs named `Tomato-Gallery_<version>-FOSS-<abi>.apk` for arm64-v8a, armeabi-v7a, x86_64, and universal; launcher name Gallery), then:
+The `body:` starts directly with `## New in <version>`. No preamble above it: no APK/ABI list, no applicationId, no "Version x (versionCode y)" line, no tomato.simple.gallery uninstall warning, no "Notes below roll up" line. Add the new section on top of the older `## New in ...` sections:
 
 ```
 ## New in <version>
