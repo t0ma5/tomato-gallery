@@ -1,0 +1,7 @@
+• SD card and USB: delete, move and restore ask for access again
+• Slideshow stop no longer targets the wrong file
+• Undo only for files really deleted; favorites safe on load errors
+• Shared JPEGs lose the hidden EXIF thumbnail, XMP and IPTC
+• Android 14+: "Select photos" access, Change selected photos in Settings
+• Locked sub-albums hidden in Search and Show all
+• TalkBack labels on video controls; editor fixes

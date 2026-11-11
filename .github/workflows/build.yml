@@ -185,6 +185,17 @@ jobs:
           overwrite_files: true
           generate_release_notes: true
           body: |
+            ## New in 1.4
+
+            1. **SD card and USB drives** — Delete, move, rename and restore ask for folder access again, instead of looking done while nothing changed. A restore that needs access continues after you grant it.
+            2. **Safer delete** — Stopping a slideshow no longer makes Delete, Share or Favorite act on a different file. Undo shows only for files that were really deleted, so a failed delete leaves no duplicate in the bin. A folder that fails to load no longer clears your favorites.
+            3. **Private sharing** — With Strip metadata on, shared JPEGs also lose the hidden EXIF thumbnail (a small copy of the photo), XMP, IPTC and any appended data. Colors and orientation stay.
+            4. **Select photos on Android 14+** — The gallery works with "Select photos" access and doesn't ask again on every start. Settings → Change selected photos reopens the picker.
+            5. **Locked folders** — Sub-albums of a locked album stay hidden in Search and Show all too.
+            6. **TalkBack** — Video play/pause, mute, previous, next, speed and the skip buttons are labeled.
+            7. **Editor** — No crash when a filter preview can't load. Leaving an untouched crop is no longer an edit, so a plain rotate stays lossless. Lower memory use. Crop requests from other apps no longer overwrite their image.
+            8. **Smoother** — Copy text can be cancelled and starts faster the second time. Big folders delete and scroll with less stutter, and the viewer stays on the same photo after a dark mode switch.
+
             ## New in 1.3
 
             1. **Undo delete** — With the Recycle Bin on, deleting a photo or video moves it there at once and shows Undo, in the grid, search and the viewer. Deleting for good, the system trash, and deleting the last file in a folder still ask first.

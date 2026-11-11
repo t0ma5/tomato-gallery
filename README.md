@@ -54,8 +54,9 @@ The original Simple Gallery Pro workflow, plus a new completely FOSS editor, OCR
 - **Android Trash** — Optional MediaStore trash on Android 11+ instead of the app Recycle Bin. Favorites also write `IS_FAVORITE` when the system allows it.
 
 **Private**
-- **Locked folders** stay hidden in Favorites, Recycle Bin, and widgets until you unlock.
-- **Strip metadata** — Remove GPS or all EXIF from photos, or when sharing (multi-select and videos too; files that cannot be stripped are skipped).
+- **Locked folders** stay hidden in Favorites, Recycle Bin, widgets, Search and Show all (sub-albums too) until you unlock.
+- **Strip metadata** — Remove GPS or all EXIF from photos, or when sharing (multi-select and videos too; files that cannot be stripped are skipped). Shared JPEGs also lose the hidden EXIF thumbnail, XMP, IPTC and any appended data; colors and orientation stay.
+- **Select photos** — On Android 14+ the gallery works with "Select photos" access and doesn't ask again on every start. Settings → Change selected photos reopens the picker.
 - **App lock on return** — Every screen asks again after the 5-minute grace period, counted from when you left the app.
 
 **Motion**
@@ -64,7 +65,7 @@ The original Simple Gallery Pro workflow, plus a new completely FOSS editor, OCR
 - **Hide and unhide** — A second hide or unhide of the same file waits until the first rename finishes.
 
 **Accessibility**
-- **TalkBack** — Photos, videos and folders read their name, type, length, favorite and item count, and say when they are selected. The thumbnail favorite star has a label and a bigger tap area.
+- **TalkBack** — Photos, videos and folders read their name, type, length, favorite and item count, and say when they are selected. The thumbnail favorite star has a label and a bigger tap area. Video controls (play/pause, mute, previous, next, speed, skip) are labeled.
 
 **No nags**
 - No donation prompts.
@@ -80,7 +81,7 @@ Release APKs come from `assembleFossRelease` (local and GitHub Actions). Names:
 
 | Item | Value |
 | --- | --- |
-| App version | 1.3 (versionCode 104) |
+| App version | 1.4 (versionCode 105) |
 | minSdk | 26 |
 | targetSdk / compileSdk | 36 (Android 16) |
 | JVM bytecode | 17 |

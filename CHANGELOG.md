@@ -1,5 +1,19 @@
 # Changelog
 
+## Version 1.4 *(2026-11-11)*
+
+- SD card and USB drives: delete, move, rename and restore ask for folder access again instead of failing quietly
+- Stopping a slideshow no longer makes Delete, Share or Favorite act on a different file
+- Undo after delete only shows for files that were really deleted; a file that could not be deleted stays in place, with no duplicate in the bin
+- A failed folder load no longer clears your favorites
+- Shared JPEGs with Strip metadata lose the hidden EXIF thumbnail, XMP, IPTC and appended data; colors and orientation stay
+- Android 14+: works with "Select photos" access without asking again; Settings → Change selected photos
+- Locked folders also hide their sub-albums in Search and Show all
+- Video controls have TalkBack labels
+- Editor: no crash when a filter preview can't load, leaving an untouched crop is no longer an edit, lower memory use; crop requests from other apps no longer overwrite their image
+- Copy text can be cancelled and is faster on repeat use
+- Smoother viewer and grid on big folders; the viewer stays on the same photo after a dark mode switch
+
 ## Version 1.3 *(2026-11-03)*
 
 - With the Recycle Bin on, delete shows Undo instead of a confirmation (grid, search, viewer)
