@@ -480,4 +480,16 @@
     <string name="tag_removed">Tag usunięty</string>
     <string name="current_tags">Bieżące tagi</string>
     <string name="remove_tag_hint">Dotknij ×, aby usunąć</string>
+    <string name="duplicate_keep_label">Zachowaj: %s</string>
+    <string name="duplicate_delete_label">Usuń: %s</string>
+    <string name="duplicate_choose_keep">Wybierz kopię do zachowania</string>
+    <string name="share_strip_failed_skipped">Nie udało się usunąć metadanych z %d plik(ów), nie zostały udostępnione</string>
+    <string name="rotate_format_unsupported">Tego formatu pliku nie można obrócić w miejscu</string>
+    <string name="editor_overwrite_unsupported_format">Tego formatu nie można nadpisać. Zapisz kopię.</string>
+    <string name="video_play">Odtwórz</string>
+    <string name="video_pause">Wstrzymaj</string>
+    <string name="video_mute">Wycisz</string>
+    <string name="video_unmute">Włącz dźwięk</string>
+    <string name="video_skip_back">Przewiń do tyłu</string>
+    <string name="video_skip_forward">Przewiń do przodu</string>
 </resources>

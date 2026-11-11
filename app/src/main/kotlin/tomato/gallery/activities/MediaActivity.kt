@@ -681,7 +681,7 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
 
     private fun startAsyncTask() {
         mCurrAsyncTask?.stopFetching()
-        mCurrAsyncTask = GetMediaAsynctask(applicationContext, mPath, mIsGetImageIntent, mIsGetVideoIntent, mShowAll, mShowFavoritesOnly) {
+        mCurrAsyncTask = GetMediaAsynctask(applicationContext, mPath, mIsGetImageIntent, mIsGetVideoIntent, mShowAll, mShowFavoritesOnly, deliverEmptyOnFailure = false) {
             ensureBackgroundThread {
                 val oldMedia = mMedia.clone() as ArrayList<ThumbnailItem>
                 val newMedia = it
@@ -1107,14 +1107,27 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
                 runOnUiThread {
                     if (movedItems.size < filtered.size) {
                         toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
-                        // the grid already dropped every selected item, bring back the ones that stayed
-                        refreshItems()
                     }
-                    if (movedItems.isNotEmpty()) {
-                        // Undo only once the originals are gone, or the restore would land next to them as a renamed copy
-                        deleteFilteredFiles(movedItems) {
-                            showRecycleBinUndo(binPaths) { refreshItems() }
+                    if (movedItems.isEmpty()) {
+                        // the grid already dropped every selected item, bring them back
+                        refreshItems()
+                        return@runOnUiThread
+                    }
+                    // Undo only for originals that are really gone, or the restore would land next to them as a renamed copy.
+                    // Refresh after the delete, not alongside it: both touch mMedia.
+                    val settle = {
+                        settleRecycleBinMove(moved, binPaths) { undoable ->
+                            runOnUiThread {
+                                if (undoable.size < filtered.size) {
+                                    // bring back the items that stayed
+                                    refreshItems()
+                                }
+                                showRecycleBinUndo(undoable) { refreshItems() }
+                            }
                         }
+                    }
+                    deleteFilteredFiles(movedItems, onFailed = settle) {
+                        settle()
                     }
                 }
             }
@@ -1127,10 +1140,11 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
 
     private fun shouldSkipAuthentication() = intent.getBooleanExtra(SKIP_AUTHENTICATION, false)
 
-    private fun deleteFilteredFiles(filtered: ArrayList<FileDirItem>, onDeleted: (() -> Unit)? = null) {
+    private fun deleteFilteredFiles(filtered: ArrayList<FileDirItem>, onFailed: (() -> Unit)? = null, onDeleted: (() -> Unit)? = null) {
         deleteFiles(filtered) {
             if (!it) {
                 toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+                onFailed?.invoke()
                 return@deleteFiles
             }
 
@@ -1146,12 +1160,12 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
                 }
             }
 
+            // run onDeleted on finish too: it may roll back bin copies of originals that failed to delete
+            onDeleted?.invoke()
             if (mMedia.isEmpty()) {
                 deleteDirectoryIfEmpty()
                 deleteDBDirectory()
                 finish()
-            } else {
-                onDeleted?.invoke()
             }
         }
     }

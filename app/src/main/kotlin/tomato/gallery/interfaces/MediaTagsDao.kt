@@ -30,6 +30,9 @@ interface MediaTagsDao {
     @Query("DELETE FROM media_tags WHERE full_path = :path COLLATE NOCASE")
     fun deleteTagsForPath(path: String)
 
+    @Query("DELETE FROM media_tags WHERE substr(full_path, 1, length(:prefix)) = :prefix COLLATE NOCASE")
+    fun deleteTagsWithPrefix(prefix: String)
+
     @Query("UPDATE OR REPLACE media_tags SET full_path = :newPath WHERE full_path = :oldPath COLLATE NOCASE")
     fun updatePath(oldPath: String, newPath: String): Int
 

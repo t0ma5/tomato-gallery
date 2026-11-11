@@ -478,4 +478,16 @@
     <string name="tag_removed">Tag entfernt</string>
     <string name="current_tags">Aktuelle Tags</string>
     <string name="remove_tag_hint">× antippen zum Entfernen</string>
+    <string name="duplicate_keep_label">Behalten: %s</string>
+    <string name="duplicate_delete_label">Löschen: %s</string>
+    <string name="duplicate_choose_keep">Zu behaltende Kopie wählen</string>
+    <string name="share_strip_failed_skipped">Metadaten von %d Datei(en) konnten nicht entfernt werden, sie wurden nicht geteilt</string>
+    <string name="rotate_format_unsupported">Dieses Dateiformat kann nicht direkt gedreht werden</string>
+    <string name="editor_overwrite_unsupported_format">Dieses Format kann nicht überschrieben werden. Speichere stattdessen eine Kopie.</string>
+    <string name="video_play">Abspielen</string>
+    <string name="video_pause">Pause</string>
+    <string name="video_mute">Stumm schalten</string>
+    <string name="video_unmute">Ton einschalten</string>
+    <string name="video_skip_back">Zurückspringen</string>
+    <string name="video_skip_forward">Vorspringen</string>
 </resources>

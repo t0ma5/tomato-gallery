@@ -499,7 +499,7 @@ fun Context.rescanFolderMedia(path: String) {
 
 fun Context.rescanFolderMediaSync(path: String) {
     getCachedMedia(path) { cached ->
-        GetMediaAsynctask(applicationContext, path, isPickImage = false, isPickVideo = false, showAll = false) { newMedia ->
+        GetMediaAsynctask(applicationContext, path, isPickImage = false, isPickVideo = false, showAll = false, deliverEmptyOnFailure = false) { newMedia ->
             ensureBackgroundThread {
                 val media = newMedia.filterIsInstance<Medium>() as ArrayList<Medium>
                 try {
@@ -817,7 +817,7 @@ fun Context.getCachedMedia(path: String, getVideosOnly: Boolean = false, getImag
         }
 
         val shouldShowHidden = config.shouldShowHidden
-        foldersToScan.filter { path.isNotEmpty() || !config.isFolderProtected(it) }.forEach {
+        foldersToScan.filter { path.isNotEmpty() || !config.isPathInProtectedFolder(it) }.forEach {
             try {
                 val currMedia = mediaDB.getMediaFromPath(it)
                 media.addAll(currMedia)
@@ -1178,8 +1178,10 @@ fun Context.addPathToDB(path: String) {
         try {
             val isFavorite = favoritesDB.isFavorite(path)
             val videoDuration = if (type == TYPE_VIDEOS) getDuration(path) ?: 0 else 0
+            // the file's own time, not now: a first paint sorted by date must not float every new row to the top
+            val lastModified = File(path).lastModified().takeIf { it > 0L } ?: System.currentTimeMillis()
             val medium = Medium(
-                null, path.getFilenameFromPath(), path, path.getParentPath(), System.currentTimeMillis(), System.currentTimeMillis(),
+                null, path.getFilenameFromPath(), path, path.getParentPath(), lastModified, lastModified,
                 File(path).length(), type, videoDuration, isFavorite, 0L, 0L
             )
 

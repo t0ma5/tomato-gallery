@@ -22,11 +22,15 @@ class OcrService : Service() {
         }
         val path = msg.data?.getString(KEY_PATH).orEmpty()
         val replyTo = msg.replyTo
+        idleHandler.removeCallbacks(idleKill)
         ensureBackgroundThread {
-            val outcome = try {
-                PhotoOcr.recognize(applicationContext, path)
-            } catch (_: Exception) {
-                PhotoOcrResult.Failed
+            // one recognition at a time, the native engine and its models are shared
+            val outcome = synchronized(recognizeLock) {
+                try {
+                    PhotoOcr.recognize(applicationContext, path)
+                } catch (_: Exception) {
+                    PhotoOcrResult.Failed
+                }
             }
             val reply = Message.obtain(null, MSG_RESULT)
             reply.data = Bundle().apply {
@@ -43,10 +47,9 @@ class OcrService : Service() {
                 replyTo?.send(reply)
             } catch (_: RemoteException) {
             }
-            Handler(Looper.getMainLooper()).post {
-                stopSelf()
-                Process.killProcess(Process.myPid())
-            }
+            // keep the process (and the loaded models) warm for a while, then give the native memory back
+            idleHandler.removeCallbacks(idleKill)
+            idleHandler.postDelayed(idleKill, IDLE_KILL_MS)
         }
         true
     })
@@ -63,8 +66,15 @@ class OcrService : Service() {
         private const val KIND_EMPTY = 2
         private const val KIND_FAILED = 3
         private const val TIMEOUT_MS = 60_000L
+        private const val IDLE_KILL_MS = 60_000L
 
-        fun recognize(context: Context, path: String, onResult: (PhotoOcrResult) -> Unit) {
+        // process-wide: a later bind gets a new Service instance in the same :ocr process
+        private val recognizeLock = Any()
+        private val idleHandler = Handler(Looper.getMainLooper())
+        private val idleKill = Runnable { Process.killProcess(Process.myPid()) }
+
+        /** Returns a cancel function: it drops the pending result and unbinds. */
+        fun recognize(context: Context, path: String, onResult: (PhotoOcrResult) -> Unit): () -> Unit {
             val app = context.applicationContext
             var delivered = false
             lateinit var connection: ServiceConnection
@@ -107,7 +117,8 @@ class OcrService : Service() {
                     }
                 }
 
-                override fun onServiceDisconnected(name: ComponentName) = Unit
+                // the :ocr process died mid-request, don't make the user wait for the timeout
+                override fun onServiceDisconnected(name: ComponentName) = finish(PhotoOcrResult.Failed)
             }
             replyHandler.postDelayed(timeout, TIMEOUT_MS)
             val bound = runCatching {
@@ -115,6 +126,13 @@ class OcrService : Service() {
             }.getOrDefault(false)
             if (!bound) {
                 finish(PhotoOcrResult.Failed)
+            }
+            return {
+                if (!delivered) {
+                    delivered = true
+                    replyHandler.removeCallbacks(timeout)
+                    runCatching { app.unbindService(connection) }
+                }
             }
         }
     }

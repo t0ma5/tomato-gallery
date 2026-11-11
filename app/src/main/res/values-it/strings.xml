@@ -479,4 +479,16 @@
     <string name="tag_removed">Tag rimosso</string>
     <string name="current_tags">Tag attuali</string>
     <string name="remove_tag_hint">Tocca × per rimuovere</string>
+    <string name="duplicate_keep_label">Mantieni: %s</string>
+    <string name="duplicate_delete_label">Elimina: %s</string>
+    <string name="duplicate_choose_keep">Scegli la copia da mantenere</string>
+    <string name="share_strip_failed_skipped">Impossibile rimuovere i metadati da %d file, non sono stati condivisi</string>
+    <string name="rotate_format_unsupported">Questo formato di file non può essere ruotato direttamente</string>
+    <string name="editor_overwrite_unsupported_format">Questo formato non può essere sovrascritto. Salva invece una copia.</string>
+    <string name="video_play">Riproduci</string>
+    <string name="video_pause">Pausa</string>
+    <string name="video_mute">Disattiva audio</string>
+    <string name="video_unmute">Attiva audio</string>
+    <string name="video_skip_back">Indietro</string>
+    <string name="video_skip_forward">Avanti</string>
 </resources>

@@ -208,7 +208,7 @@ class PhotoFragment : ViewPagerFragment() {
     }
 
     private fun initContent() {
-        mIsFullscreen = requireActivity().window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN == View.SYSTEM_UI_FLAG_FULLSCREEN
+        mIsFullscreen = listener?.isFullscreen() == true
         loadImage()
         initExtendedDetails()
         mWasInit = true
@@ -1091,7 +1091,8 @@ class PhotoFragment : ViewPagerFragment() {
                 exif.getAttributeInt(TAG_ORIENTATION, defaultOrientation)
             }
 
-            if (orient == defaultOrientation || requireContext().isPathOnOTG(getFilePathToShow())) {
+            // second full EXIF pass only where the first could not read the file (OTG); content URIs already used this parser
+            if (!path.startsWith("content:/") && requireContext().isPathOnOTG(path)) {
                 val uri = if (path.startsWith("content:/")) Uri.parse(path) else Uri.fromFile(File(path))
                 orient = requireContext().contentResolver.openInputStream(uri)?.use { inputStream ->
                     val exif2 = ExifInterface()

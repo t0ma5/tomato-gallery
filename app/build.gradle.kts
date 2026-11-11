@@ -21,6 +21,8 @@ val localArm64 = (findProperty("localArm64") as? String).equals("true", ignoreCa
 
 android {
     compileSdk = project.libs.versions.app.build.compileSDKVersion.get().toInt()
+    // AGP 8.13 defaults to 35.0.0; the local SDK only has 36.0.0
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = libs.versions.app.version.appId.get()
@@ -182,7 +184,6 @@ dependencies {
     implementation(libs.androidx.emoji2.emojipicker)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.transformer)
-    implementation(libs.sanselan)
     implementation(libs.imagefilters)
     implementation(libs.androidsvg.aar)
     implementation(libs.gestureviews)

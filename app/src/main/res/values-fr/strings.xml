@@ -479,4 +479,16 @@
     <string name="tag_removed">Étiquette retirée</string>
     <string name="current_tags">Étiquettes actuelles</string>
     <string name="remove_tag_hint">Touchez × pour retirer</string>
+    <string name="duplicate_keep_label">Garder : %s</string>
+    <string name="duplicate_delete_label">Supprimer : %s</string>
+    <string name="duplicate_choose_keep">Choisir la copie à garder</string>
+    <string name="share_strip_failed_skipped">Impossible de retirer les métadonnées de %d fichier(s), ils n’ont pas été partagés</string>
+    <string name="rotate_format_unsupported">Ce format de fichier ne peut pas être pivoté sur place</string>
+    <string name="editor_overwrite_unsupported_format">Ce format ne peut pas être écrasé. Enregistrez une copie à la place.</string>
+    <string name="video_play">Lire</string>
+    <string name="video_pause">Pause</string>
+    <string name="video_mute">Couper le son</string>
+    <string name="video_unmute">Activer le son</string>
+    <string name="video_skip_back">Reculer</string>
+    <string name="video_skip_forward">Avancer</string>
 </resources>

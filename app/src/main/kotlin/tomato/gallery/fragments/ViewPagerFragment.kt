@@ -61,6 +61,9 @@ abstract class ViewPagerFragment : Fragment() {
         fun isSlideShowActive(): Boolean
 
         fun interruptSlideshowDrag()
+
+        // bars are hidden through WindowInsetsController, which never sets the legacy SYSTEM_UI_FLAG_FULLSCREEN
+        fun isFullscreen(): Boolean
     }
 
     fun getMediumExtendedDetails(medium: Medium): String {

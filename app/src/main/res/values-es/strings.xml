@@ -479,4 +479,16 @@
     <string name="tag_removed">Etiqueta eliminada</string>
     <string name="current_tags">Etiquetas actuales</string>
     <string name="remove_tag_hint">Toca × para quitar</string>
+    <string name="duplicate_keep_label">Conservar: %s</string>
+    <string name="duplicate_delete_label">Eliminar: %s</string>
+    <string name="duplicate_choose_keep">Elige la copia que quieres conservar</string>
+    <string name="share_strip_failed_skipped">No se pudieron quitar los metadatos de %d archivo(s), no se compartieron</string>
+    <string name="rotate_format_unsupported">No se puede girar este formato de archivo directamente</string>
+    <string name="editor_overwrite_unsupported_format">Este formato no se puede sobrescribir. Guarda una copia en su lugar.</string>
+    <string name="video_play">Reproducir</string>
+    <string name="video_pause">Pausa</string>
+    <string name="video_mute">Silenciar</string>
+    <string name="video_unmute">Activar sonido</string>
+    <string name="video_skip_back">Retroceder</string>
+    <string name="video_skip_forward">Avanzar</string>
 </resources>

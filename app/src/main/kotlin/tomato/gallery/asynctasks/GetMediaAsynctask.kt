@@ -16,7 +16,10 @@ import tomato.gallery.models.ThumbnailItem
 
 class GetMediaAsynctask(
     val context: Context, val mPath: String, val isPickImage: Boolean = false, val isPickVideo: Boolean = false,
-    val showAll: Boolean, val favoritesOnly: Boolean = false, val callback: (media: ArrayList<ThumbnailItem>) -> Unit
+    val showAll: Boolean, val favoritesOnly: Boolean = false,
+    // false: on a failed fetch skip the callback, so callers that prune caches never read an error as "folder is empty"
+    val deliverEmptyOnFailure: Boolean = true,
+    val callback: (media: ArrayList<ThumbnailItem>) -> Unit
 ) {
     private val mediaFetcher = MediaFetcher(context)
     @Volatile
@@ -30,6 +33,9 @@ class GetMediaAsynctask(
             val media = try {
                 fetch()
             } catch (_: Exception) {
+                if (!deliverEmptyOnFailure) {
+                    return@ensureBackgroundThread
+                }
                 ArrayList()
             }
             if (!cancelled) {
@@ -57,7 +63,8 @@ class GetMediaAsynctask(
         val dateTakens = if (getProperDateTaken) mediaFetcher.getDateTakens() else HashMap()
 
         val media = if (showAll) {
-            val foldersToScan = mediaFetcher.getFoldersToScan().filter { it != RECYCLE_BIN && it != FAVORITES && !context.config.isFolderProtected(it) }
+            // subtree check, like Favorites and the bin: a sub-album of a locked album stays hidden too
+            val foldersToScan = mediaFetcher.getFoldersToScan().filter { it != RECYCLE_BIN && it != FAVORITES && !context.config.isPathInProtectedFolder(it) }
             val media = ArrayList<Medium>()
             // On Android 11+ without all-files access, query MediaStore once for every folder instead of once per folder.
             // An empty map (other Android versions) makes getFilesFrom fall back to listing the folder.

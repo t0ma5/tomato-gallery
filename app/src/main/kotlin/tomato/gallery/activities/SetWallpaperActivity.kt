@@ -29,7 +29,8 @@ class SetWallpaperActivity : SimpleActivity(), CropImageView.OnCropImageComplete
     private var wallpaperFlag = -1
 
     lateinit var uri: Uri
-    lateinit var wallpaperManager: WallpaperManager
+    // lazy: the aspect-ratio button can read it while the picker for a missing intent.data is still up
+    private val wallpaperManager by lazy { WallpaperManager.getInstance(applicationContext) }
 
     private val binding by viewBinding(ActivitySetWallpaperBinding::inflate)
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -87,7 +88,6 @@ class SetWallpaperActivity : SimpleActivity(), CropImageView.OnCropImageComplete
             return
         }
 
-        wallpaperManager = WallpaperManager.getInstance(applicationContext)
         binding.cropImageView.apply {
             setOnCropImageCompleteListener(this@SetWallpaperActivity)
             setImageUriAsync(uri)

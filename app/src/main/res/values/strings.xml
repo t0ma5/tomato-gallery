@@ -509,4 +509,10 @@
     <string name="copy_text_reading">Reading text…</string>
     <string name="no_text_found">No text found</string>
     <string name="copy_text_failed">Could not read text</string>
+    <string name="video_play">Play</string>
+    <string name="video_pause">Pause</string>
+    <string name="video_mute">Mute</string>
+    <string name="video_unmute">Unmute</string>
+    <string name="video_skip_back">Skip back</string>
+    <string name="video_skip_forward">Skip forward</string>
 </resources>

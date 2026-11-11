@@ -24,7 +24,8 @@ interface DirectoryDao {
     @Query("UPDATE OR REPLACE directories SET thumbnail = :thumbnail, media_count = :mediaCnt, last_modified = :lastModified, date_taken = :dateTaken, size = :size, media_types = :mediaTypes, sort_value = :sortValue WHERE path = :path COLLATE NOCASE")
     fun updateDirectory(path: String, thumbnail: String, mediaCnt: Int, lastModified: Long, dateTaken: Long, size: Long, mediaTypes: Int, sortValue: String)
 
-    @Query("UPDATE directories SET thumbnail = :thumbnail, filename = :name, path = :newPath WHERE path = :oldPath COLLATE NOCASE")
+    // OR REPLACE: a stale row already at :newPath would hit the unique path index and skip the onFolderMoved migration
+    @Query("UPDATE OR REPLACE directories SET thumbnail = :thumbnail, filename = :name, path = :newPath WHERE path = :oldPath COLLATE NOCASE")
     fun updateDirectoryAfterRename(thumbnail: String, name: String, newPath: String, oldPath: String)
 
     // :oldPrefix and :newPrefix end with '/', only folders strictly inside the old folder are moved

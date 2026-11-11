@@ -64,6 +64,8 @@ import tomato.gallery.models.ThumbnailItem
 import java.io.File
 import kotlin.math.min
 
+private const val SAVED_CURRENT_PATH = "saved_current_path"
+
 @Suppress("UNCHECKED_CAST")
 class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, ViewPagerFragment.FragmentListener, ViewerMotionHost {
     private var mPath = ""
@@ -83,8 +85,8 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private var mSlideshowInterval = SLIDESHOW_DEFAULT_INTERVAL
     private var mSlideshowMoveBackwards = false
     private var mSlideshowMedia = mutableListOf<Medium>()
+    private var mRestoredPath = ""
     private var mAreSlideShowMediaVisible = false
-    private var mRandomSlideshowStopped = false
 
     private var mTemporarilyShowHiddenForView = false
     private var mIsTogglingVisibility = false
@@ -110,6 +112,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     override fun onCreate(savedInstanceState: Bundle?) {
         showTransparentTop = true
         super.onCreate(savedInstanceState)
+        mRestoredPath = savedInstanceState?.getString(SAVED_CURRENT_PATH).orEmpty()
         setContentView(binding.root)
         setupEdgeToEdge(padBottomSystem = listOf(binding.bottomActions.bottomActionsWrapper))
         setupOptionsMenu()
@@ -189,6 +192,11 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     override fun onPause() {
         super.onPause()
         stopSlideshow()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        getCurrentPath().takeIf { it.isNotEmpty() }?.let { outState.putString(SAVED_CURRENT_PATH, it) }
     }
 
     override fun onDestroy() {
@@ -385,6 +393,12 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             mPath = intent.extras!!.getString(REAL_FILE_PATH)!!
         }
 
+        // recreated (dark mode toggle, process death): reopen on the file that was on screen, not the intent's
+        if (mRestoredPath.isNotEmpty() && mPath.isNotEmpty()) {
+            mPath = mRestoredPath
+            mRestoredPath = ""
+        }
+
         if (mPath.isEmpty()) {
             toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
             finish()
@@ -579,7 +593,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                     }
 
                     hideSystemUI(true)
-                    mRandomSlideshowStopped = false
                     mSlideshowInterval = config.slideshowInterval
                     mSlideshowMoveBackwards = config.slideshowMoveBackwards
                     mIsSlideshowActive = true
@@ -680,10 +693,20 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             showSystemUI(true)
             mSlideshowHandler.removeCallbacksAndMessages(null)
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            mAreSlideShowMediaVisible = false
 
-            if (config.slideshowRandomOrder) {
-                mRandomSlideshowStopped = true
+            // the pager still holds the filtered/shuffled slideshow list, put the full list back on the same file,
+            // else mPos indexes the wrong list and delete/share/favorite hit another file
+            mPath = getCurrentPath()
+            mAreSlideShowMediaVisible = false
+            if (binding.viewPager.isFakeDragging) {
+                try {
+                    binding.viewPager.endFakeDrag()
+                } catch (_: Exception) {
+                }
+            }
+            if (mMediaFiles.isNotEmpty() && !isDestroyed) {
+                mPos = getPositionInList(mMediaFiles)
+                updatePagerItems(mMediaFiles)
             }
         }
     }
@@ -691,14 +714,15 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private fun scheduleSwipe() {
         mSlideshowHandler.removeCallbacksAndMessages(null)
         if (mIsSlideshowActive) {
-            if (getCurrentMedium()!!.isImage() || getCurrentMedium()!!.isGIF() || getCurrentMedium()!!.isPortrait()) {
+            val medium = getCurrentMedium() ?: return
+            if (medium.isImage() || medium.isGIF() || medium.isPortrait()) {
                 mSlideshowHandler.postDelayed({
                     if (mIsSlideshowActive && !isDestroyed) {
                         swipeToNextMedium()
                     }
                 }, mSlideshowInterval * 1000L)
             } else {
-                (getCurrentFragment() as? VideoFragment)!!.playVideo()
+                (getCurrentFragment() as? VideoFragment)?.playVideo()
             }
         }
     }
@@ -1268,11 +1292,17 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
         copyTextInProgress = true
         val binding = DialogCopyTextProgressBinding.inflate(layoutInflater)
+        var cancelOcr: (() -> Unit)? = null
         getAlertDialogBuilder()
-            .setCancelable(false)
+            // Back cancels, instead of a stuck dialog until the 60 s timeout
+            .setCancelable(true)
+            .setOnCancelListener {
+                cancelOcr?.invoke()
+                copyTextInProgress = false
+            }
             .apply {
                 setupDialogStuff(binding.root, this, R.string.copy_text, cancelOnTouchOutside = false) { progressDialog ->
-                    OcrService.recognize(applicationContext, path) { outcome ->
+                    cancelOcr = OcrService.recognize(applicationContext, path) { outcome ->
                         copyTextInProgress = false
                         if (isFinishing || isDestroyed) {
                             return@recognize
@@ -1440,16 +1470,25 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                 movePathsInRecycleBin(arrayListOf(path), binPaths) {
                     if (it) {
                         tryDeleteFileDirItem(fileDirItem, false, false) {
-                            mIgnoredPaths.remove(fileDirItem.path)
-                            if (media.isEmpty()) {
-                                deleteDirectoryIfEmpty()
-                                finish()
-                            } else {
-                                // in fullscreen the bar is slid off screen, an anchor there would push the Snackbar off too
-                                val anchor = if (mIsFullScreen) null else binding.bottomActions.root
-                                showRecycleBinUndo(binPaths, anchor) {
-                                    mPath = path
-                                    refreshViewPager(refetchPosition = true)
+                            settleRecycleBinMove(arrayListOf(path), binPaths) { undoable ->
+                                runOnUiThread {
+                                    mIgnoredPaths.remove(fileDirItem.path)
+                                    if (undoable.isEmpty()) {
+                                        // the original is still there, its bin copy was rolled back: show it again
+                                        toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+                                        mPath = path
+                                        refreshViewPager(refetchPosition = true)
+                                    } else if (media.isEmpty()) {
+                                        deleteDirectoryIfEmpty()
+                                        finish()
+                                    } else {
+                                        // in fullscreen the bar is slid off screen, an anchor there would push the Snackbar off too
+                                        val anchor = if (mIsFullScreen) null else binding.bottomActions.root
+                                        showRecycleBinUndo(undoable, anchor) {
+                                            mPath = path
+                                            refreshViewPager(refetchPosition = true)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1534,7 +1573,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private fun refreshViewPager(refetchPosition: Boolean = false) {
         val isRandomSorting = config.getFolderSorting(mDirectory) and SORT_BY_RANDOM != 0
         if (!isRandomSorting || isExternalIntent()) {
-            GetMediaAsynctask(applicationContext, mDirectory, isPickImage = false, isPickVideo = false, showAll = mShowAll) {
+            GetMediaAsynctask(applicationContext, mDirectory, isPickImage = false, isPickVideo = false, showAll = mShowAll, deliverEmptyOnFailure = false) {
                 gotMedia(it, refetchViewPagerPosition = refetchPosition)
             }.execute()
         }
@@ -1610,21 +1649,29 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     @SuppressLint("SourceLockedOrientationActivity")
     private fun checkOrientation() {
         if (!mIsOrientationLocked && config.screenRotation == ROTATE_BY_ASPECT_RATIO) {
-            var flipSides = false
-            try {
-                val pathToLoad = getCurrentPath()
-                val exif = ExifInterface(pathToLoad)
-                val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, -1)
-                flipSides = orientation == ExifInterface.ORIENTATION_ROTATE_90 || orientation == ExifInterface.ORIENTATION_ROTATE_270
-            } catch (e: Exception) {
-            }
-            val resolution = applicationContext.getResolution(getCurrentPath()) ?: return
-            val width = if (flipSides) resolution.y else resolution.x
-            val height = if (flipSides) resolution.x else resolution.y
-            if (width > height) {
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            } else if (width < height) {
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            // EXIF + bounds decode per page settle: keep it off the main thread
+            val pathToLoad = getCurrentPath()
+            ensureBackgroundThread {
+                var flipSides = false
+                try {
+                    val exif = ExifInterface(pathToLoad)
+                    val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, -1)
+                    flipSides = orientation == ExifInterface.ORIENTATION_ROTATE_90 || orientation == ExifInterface.ORIENTATION_ROTATE_270
+                } catch (e: Exception) {
+                }
+                val resolution = applicationContext.getResolution(pathToLoad) ?: return@ensureBackgroundThread
+                val width = if (flipSides) resolution.y else resolution.x
+                val height = if (flipSides) resolution.x else resolution.y
+                runOnUiThread {
+                    if (isDestroyed || mIsOrientationLocked || getCurrentPath() != pathToLoad) {
+                        return@runOnUiThread
+                    }
+                    if (width > height) {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    } else if (width < height) {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    }
+                }
             }
         }
     }
@@ -1643,6 +1690,8 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     }
 
     override fun isSlideShowActive() = mIsSlideshowActive
+
+    override fun isFullscreen() = mIsFullScreen
 
     override fun interruptSlideshowDrag() {
         if (!binding.viewPager.isFakeDragging) return
@@ -1731,7 +1780,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         }
     }
 
-    private fun getCurrentMedia() = if (mAreSlideShowMediaVisible || mRandomSlideshowStopped) mSlideshowMedia else mMediaFiles
+    private fun getCurrentMedia() = if (mAreSlideShowMediaVisible) mSlideshowMedia else mMediaFiles
 
     private fun getCurrentPath() = getCurrentMedium()?.path ?: ""
 

@@ -115,15 +115,20 @@ class DuplicateFinderActivity : SimpleActivity() {
                         com.simplemobiletools.commons.R.string.ok,
                         com.simplemobiletools.commons.R.string.cancel
                     ) {
-                        deleteExtras(extras)
-                        val adapterPos = groups.indexOf(group)
-                        if (adapterPos != -1) {
-                            groups.removeAt(adapterPos)
-                            notifyItemRemoved(adapterPos)
-                        }
-                        if (groups.isEmpty()) {
-                            binding.duplicatesEmpty.text = getString(R.string.no_duplicates)
-                            binding.duplicatesEmpty.beVisible()
+                        // drop the group only once the extras are really gone
+                        deleteExtras(extras) { ok ->
+                            runOnUiThread {
+                                val adapterPos = groups.indexOf(group)
+                                if (!ok || isDestroyed || adapterPos == -1) {
+                                    return@runOnUiThread
+                                }
+                                groups.removeAt(adapterPos)
+                                notifyItemRemoved(adapterPos)
+                                if (groups.isEmpty()) {
+                                    binding.duplicatesEmpty.text = getString(R.string.no_duplicates)
+                                    binding.duplicatesEmpty.beVisible()
+                                }
+                            }
                         }
                     }
                 }
@@ -131,29 +136,32 @@ class DuplicateFinderActivity : SimpleActivity() {
         }
     }
 
-    private fun deleteExtras(paths: ArrayList<String>) {
+    private fun deleteExtras(paths: ArrayList<String>, onDone: (ok: Boolean) -> Unit) {
         val items = ArrayList(paths.map { FileDirItem(it, it.substringAfterLast('/')) })
         if (shouldUseSystemTrash()) {
             trashPathsWithSystem(paths) { ok ->
                 if (!ok) {
                     toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
                 }
+                onDone(ok)
             }
             return
         }
         if (config.useRecycleBin && !config.tempSkipRecycleBin) {
             movePathsInRecycleBin(paths) { ok ->
                 if (ok) {
-                    deleteFiles(items)
+                    deleteFiles(items) { deleted -> onDone(deleted) }
                 } else {
                     toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+                    onDone(false)
                 }
             }
         } else {
-            deleteFiles(items) {
+            deleteFiles(items) { deleted ->
                 ensureBackgroundThread {
                     paths.forEach { onPathDeleted(it) }
                 }
+                onDone(deleted)
             }
         }
     }

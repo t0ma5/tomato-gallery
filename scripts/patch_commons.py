@@ -263,6 +263,20 @@ def patch_fake_version_warning() -> None:
     )
 
 
+def patch_saf_package_gates() -> None:
+    """Commons skips every SD/OTG/Android-data SAF prompt unless the app id is com.simplemobiletools.*"""
+    gate = (
+        '        return if (!packageName.startsWith("com.simplemobiletools")) {\n'
+        "            callback(true)\n"
+        "            false\n"
+        "        } else if ("
+    )
+    patch(
+        "commons/src/main/kotlin/com/simplemobiletools/commons/activities/BaseSimpleActivity.kt",
+        [(gate, "        return if (")] * 4,
+    )
+
+
 def main() -> None:
     if not ROOT.exists():
         raise SystemExit("Simple-Commons/ is missing")
@@ -773,6 +787,7 @@ def main() -> None:
     )
 
     patch_fake_version_warning()
+    patch_saf_package_gates()
     scrub_simplemobiletools_com()
     print("commons fork patches applied")
 

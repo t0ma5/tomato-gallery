@@ -672,34 +672,42 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
             }
         }
 
-        val itemsToDelete = ArrayList<FileDirItem>()
         val filter = config.filterMedia
         val showHidden = config.shouldShowHidden
-        fileDirItems.filter { it.isDirectory }.forEach {
-            val files = File(it.path).listFiles()
-            files?.filter {
-                it.absolutePath.isGalleryMediaFile() && (showHidden || !it.name.startsWith('.')) &&
-                    ((it.isGalleryImageFast() && filter and TYPE_IMAGES != 0) ||
-                        (it.isVideoFast() && filter and TYPE_VIDEOS != 0) ||
-                        (it.isGif() && filter and TYPE_GIFS != 0) ||
-                        (it.isRawFast() && filter and TYPE_RAWS != 0) ||
-                        (it.isSvg() && filter and TYPE_SVGS != 0))
-            }?.mapTo(itemsToDelete) { it.toFileDirItem(applicationContext) }
-        }
+        // listing every selected album hits the disk, keep it off the main thread
+        ensureBackgroundThread {
+            val itemsToDelete = ArrayList<FileDirItem>()
+            fileDirItems.filter { it.isDirectory }.forEach {
+                val files = File(it.path).listFiles()
+                files?.filter {
+                    it.absolutePath.isGalleryMediaFile() && (showHidden || !it.name.startsWith('.')) &&
+                        ((it.isGalleryImageFast() && filter and TYPE_IMAGES != 0) ||
+                            (it.isVideoFast() && filter and TYPE_VIDEOS != 0) ||
+                            (it.isGif() && filter and TYPE_GIFS != 0) ||
+                            (it.isRawFast() && filter and TYPE_RAWS != 0) ||
+                            (it.isSvg() && filter and TYPE_SVGS != 0))
+                }?.mapTo(itemsToDelete) { it.toFileDirItem(applicationContext) }
+            }
 
-        if (config.useRecycleBin && !config.tempSkipRecycleBin) {
-            val pathsToDelete = ArrayList<String>()
-            itemsToDelete.mapTo(pathsToDelete) { it.path }
+            runOnUiThread {
+                if (isDestroyed) {
+                    return@runOnUiThread
+                }
+                if (config.useRecycleBin && !config.tempSkipRecycleBin) {
+                    val pathsToDelete = ArrayList<String>()
+                    itemsToDelete.mapTo(pathsToDelete) { it.path }
 
-            movePathsInRecycleBin(pathsToDelete) {
-                if (it) {
-                    deleteFilteredFileDirItems(itemsToDelete, folders)
+                    movePathsInRecycleBin(pathsToDelete) {
+                        if (it) {
+                            deleteFilteredFileDirItems(itemsToDelete, folders)
+                        } else {
+                            toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+                        }
+                    }
                 } else {
-                    toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
+                    deleteFilteredFileDirItems(itemsToDelete, folders)
                 }
             }
-        } else {
-            deleteFilteredFileDirItems(itemsToDelete, folders)
         }
     }
 
@@ -1596,6 +1604,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                         filesToDelete.forEach {
                             if (File(it.path.replaceFirst(RECYCLE_BIN, recycleBinPath)).delete()) {
                                 mediaDB.deleteMediumPath(it.path)
+                                tagsDB.deleteTagsForPath(it.path)
                             }
                         }
                     } catch (e: Exception) {

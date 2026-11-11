@@ -249,6 +249,9 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
 
         binding.bottomVideoTimeHolder.videoCurrTime.setOnClickListener { doSkip(false) }
         binding.bottomVideoTimeHolder.videoDuration.setOnClickListener { doSkip(true) }
+        binding.bottomVideoTimeHolder.videoCurrTime.setClickActionLabel(getString(R.string.video_skip_back))
+        binding.bottomVideoTimeHolder.videoDuration.setClickActionLabel(getString(R.string.video_skip_forward))
+        binding.bottomVideoTimeHolder.videoPlaybackSpeed.setClickActionLabel(getString(R.string.playback_speed))
         binding.bottomVideoTimeHolder.videoTogglePlayPause.setOnClickListener { togglePlayPause() }
         binding.bottomVideoTimeHolder.videoPlaybackSpeed.setOnClickListener { showPlaybackSpeedPicker() }
         binding.bottomVideoTimeHolder.videoToggleMute.setOnClickListener {
@@ -392,6 +395,7 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
                 resumeVideo()
             } else {
                 binding.bottomVideoTimeHolder.videoTogglePlayPause.setImageResource(com.simplemobiletools.commons.R.drawable.ic_play_outline_vector)
+                binding.bottomVideoTimeHolder.videoTogglePlayPause.contentDescription = getString(R.string.video_play)
             }
         }
     }
@@ -413,6 +417,7 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
 
     private fun resumeVideo() {
         binding.bottomVideoTimeHolder.videoTogglePlayPause.setImageResource(com.simplemobiletools.commons.R.drawable.ic_pause_outline_vector)
+        binding.bottomVideoTimeHolder.videoTogglePlayPause.contentDescription = getString(R.string.video_pause)
         if (mExoPlayer == null) {
             return
         }
@@ -430,6 +435,7 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
 
     private fun pauseVideo() {
         binding.bottomVideoTimeHolder.videoTogglePlayPause.setImageResource(com.simplemobiletools.commons.R.drawable.ic_play_outline_vector)
+        binding.bottomVideoTimeHolder.videoTogglePlayPause.contentDescription = getString(R.string.video_play)
         if (mExoPlayer == null) {
             return
         }
@@ -558,6 +564,13 @@ open class VideoPlayerActivity : SimpleActivity(), SeekBar.OnSeekBarChangeListen
             else -> R.drawable.ic_vector_speaker_on
         }
         binding.bottomVideoTimeHolder.videoToggleMute.setImageResource(drawableId)
+        binding.bottomVideoTimeHolder.videoToggleMute.contentDescription = getString(
+            when {
+                !mHasAudio -> R.string.video_no_sound
+                isMuted -> R.string.video_unmute
+                else -> R.string.video_mute
+            }
+        )
     }
 
     private val mTouchHoldRunnable = Runnable {

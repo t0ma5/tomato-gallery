@@ -676,6 +676,125 @@ NEW_STRINGS = {
 for locale, extra in NEW_STRINGS.items():
     TRANSLATIONS[locale].update(extra)
 
+# strings_audit_*.xml and the video control labels (TalkBack)
+AUDIT_STRINGS = {
+    "de": {
+        "duplicate_keep_label": "Behalten: %s",
+        "duplicate_delete_label": "Löschen: %s",
+        "duplicate_choose_keep": "Zu behaltende Kopie wählen",
+        "share_strip_failed_skipped": "Metadaten von %d Datei(en) konnten nicht entfernt werden, sie wurden nicht geteilt",
+        "rotate_format_unsupported": "Dieses Dateiformat kann nicht direkt gedreht werden",
+        "editor_overwrite_unsupported_format": "Dieses Format kann nicht überschrieben werden. Speichere stattdessen eine Kopie.",
+        "video_play": "Abspielen",
+        "video_pause": "Pause",
+        "video_mute": "Stumm schalten",
+        "video_unmute": "Ton einschalten",
+        "video_skip_back": "Zurückspringen",
+        "video_skip_forward": "Vorspringen",
+    },
+    "fr": {
+        "duplicate_keep_label": "Garder : %s",
+        "duplicate_delete_label": "Supprimer : %s",
+        "duplicate_choose_keep": "Choisir la copie à garder",
+        "share_strip_failed_skipped": "Impossible de retirer les métadonnées de %d fichier(s), ils n’ont pas été partagés",
+        "rotate_format_unsupported": "Ce format de fichier ne peut pas être pivoté sur place",
+        "editor_overwrite_unsupported_format": "Ce format ne peut pas être écrasé. Enregistrez une copie à la place.",
+        "video_play": "Lire",
+        "video_pause": "Pause",
+        "video_mute": "Couper le son",
+        "video_unmute": "Activer le son",
+        "video_skip_back": "Reculer",
+        "video_skip_forward": "Avancer",
+    },
+    "es": {
+        "duplicate_keep_label": "Conservar: %s",
+        "duplicate_delete_label": "Eliminar: %s",
+        "duplicate_choose_keep": "Elige la copia que quieres conservar",
+        "share_strip_failed_skipped": "No se pudieron quitar los metadatos de %d archivo(s), no se compartieron",
+        "rotate_format_unsupported": "No se puede girar este formato de archivo directamente",
+        "editor_overwrite_unsupported_format": "Este formato no se puede sobrescribir. Guarda una copia en su lugar.",
+        "video_play": "Reproducir",
+        "video_pause": "Pausa",
+        "video_mute": "Silenciar",
+        "video_unmute": "Activar sonido",
+        "video_skip_back": "Retroceder",
+        "video_skip_forward": "Avanzar",
+    },
+    "ru": {
+        "duplicate_keep_label": "Оставить: %s",
+        "duplicate_delete_label": "Удалить: %s",
+        "duplicate_choose_keep": "Выберите копию, которую оставить",
+        "share_strip_failed_skipped": "Не удалось удалить метаданные из %d файл(ов), они не отправлены",
+        "rotate_format_unsupported": "Этот формат файла нельзя повернуть на месте",
+        "editor_overwrite_unsupported_format": "Этот формат нельзя перезаписать. Сохраните копию.",
+        "video_play": "Воспроизвести",
+        "video_pause": "Пауза",
+        "video_mute": "Выключить звук",
+        "video_unmute": "Включить звук",
+        "video_skip_back": "Перемотать назад",
+        "video_skip_forward": "Перемотать вперёд",
+    },
+    "it": {
+        "duplicate_keep_label": "Mantieni: %s",
+        "duplicate_delete_label": "Elimina: %s",
+        "duplicate_choose_keep": "Scegli la copia da mantenere",
+        "share_strip_failed_skipped": "Impossibile rimuovere i metadati da %d file, non sono stati condivisi",
+        "rotate_format_unsupported": "Questo formato di file non può essere ruotato direttamente",
+        "editor_overwrite_unsupported_format": "Questo formato non può essere sovrascritto. Salva invece una copia.",
+        "video_play": "Riproduci",
+        "video_pause": "Pausa",
+        "video_mute": "Disattiva audio",
+        "video_unmute": "Attiva audio",
+        "video_skip_back": "Indietro",
+        "video_skip_forward": "Avanti",
+    },
+    "pl": {
+        "duplicate_keep_label": "Zachowaj: %s",
+        "duplicate_delete_label": "Usuń: %s",
+        "duplicate_choose_keep": "Wybierz kopię do zachowania",
+        "share_strip_failed_skipped": "Nie udało się usunąć metadanych z %d plik(ów), nie zostały udostępnione",
+        "rotate_format_unsupported": "Tego formatu pliku nie można obrócić w miejscu",
+        "editor_overwrite_unsupported_format": "Tego formatu nie można nadpisać. Zapisz kopię.",
+        "video_play": "Odtwórz",
+        "video_pause": "Wstrzymaj",
+        "video_mute": "Wycisz",
+        "video_unmute": "Włącz dźwięk",
+        "video_skip_back": "Przewiń do tyłu",
+        "video_skip_forward": "Przewiń do przodu",
+    },
+    "zh-rCN": {
+        "duplicate_keep_label": "保留：%s",
+        "duplicate_delete_label": "删除：%s",
+        "duplicate_choose_keep": "选择要保留的副本",
+        "share_strip_failed_skipped": "无法移除 %d 个文件的元数据，未分享这些文件",
+        "rotate_format_unsupported": "不支持直接旋转此文件格式",
+        "editor_overwrite_unsupported_format": "此格式无法覆盖。请另存副本。",
+        "video_play": "播放",
+        "video_pause": "暂停",
+        "video_mute": "静音",
+        "video_unmute": "取消静音",
+        "video_skip_back": "后退",
+        "video_skip_forward": "快进",
+    },
+    "ja": {
+        "duplicate_keep_label": "残す：%s",
+        "duplicate_delete_label": "削除：%s",
+        "duplicate_choose_keep": "残すコピーを選択",
+        "share_strip_failed_skipped": "%d 件のファイルからメタデータを削除できなかったため、共有しませんでした",
+        "rotate_format_unsupported": "このファイル形式はその場で回転できません",
+        "editor_overwrite_unsupported_format": "この形式は上書きできません。コピーとして保存してください。",
+        "video_play": "再生",
+        "video_pause": "一時停止",
+        "video_mute": "ミュート",
+        "video_unmute": "ミュート解除",
+        "video_skip_back": "戻る",
+        "video_skip_forward": "進む",
+    },
+}
+
+for locale, extra in AUDIT_STRINGS.items():
+    TRANSLATIONS[locale].update(extra)
+
 KEY_RE = re.compile(r'<string name="([^"]+)"')
 
 
@@ -688,7 +807,8 @@ def escape(text: str) -> str:
 
 
 def main() -> None:
-    src_keys = keys_in(SRC)
+    # every values/*.xml, not only strings.xml (strings_audit_*.xml were never picked up)
+    src_keys = set().union(*(keys_in(f) for f in (ROOT / "values").glob("strings*.xml")))
     for locale, table in TRANSLATIONS.items():
         dest = ROOT / f"values-{locale}" / "strings.xml"
         if not dest.exists():

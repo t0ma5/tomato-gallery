@@ -101,6 +101,7 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
     private var currCropRotateAction = CROP_ROTATE_ASPECT_RATIO
     private var currAspectRatio = ASPECT_RATIO_FREE
     private var isCropIntent = false
+    private var hasExtraOutput = false
     private var isEditingWithThirdParty = false
     private var isSharingBitmap = false
     private var wasDrawCanvasPositioned = false
@@ -111,7 +112,6 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
     private var workingBitmap: Bitmap? = null
     private val toolUndoStack = ArrayList<Bitmap>(3)
     private var adjustSourceBitmap: Bitmap? = null
-    private var adjustPreviewBitmap: Bitmap? = null
     private var overwriteRequested = false
     private var hasUnsavedEdits = false
         set(value) {
@@ -268,6 +268,7 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
             finish()
             return
         }
+        hasExtraOutput = extraOutput != null
         saveUri = extraOutput ?: uri!!
 
         isCropIntent = intent.extras?.get(CROP) == "true"
@@ -1212,7 +1213,6 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         binding.bottomEditorAdjustActions.adjustContrast.progress = EditorColorMatrix.SLIDER_CENTER
         binding.bottomEditorAdjustActions.adjustSaturation.progress = EditorColorMatrix.SLIDER_CENTER
         binding.bottomEditorAdjustActions.adjustTemperature.progress = EditorColorMatrix.SLIDER_CENTER
-        recycleAdjustPreview()
     }
 
     private fun applyAdjustPreview() {
@@ -1247,14 +1247,6 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
             return source
         }
         return EditorColorMatrix.apply(source, brightness, contrast, saturation, temperature)
-    }
-
-    private fun recycleAdjustPreview() {
-        val preview = adjustPreviewBitmap
-        adjustPreviewBitmap = null
-        if (preview != null && preview !== adjustSourceBitmap && preview !== workingBitmap && preview !== filterInitialBitmap && !preview.isRecycled) {
-            preview.recycle()
-        }
     }
 
     private fun setupTextButtons() {
@@ -1451,7 +1443,8 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
                             .submit(thumbnailSize, thumbnailSize)
                             .get()
                     }
-                } catch (e: GlideException) {
+                } catch (e: Exception) {
+                    // FutureTarget.get() throws ExecutionException/InterruptedException, not GlideException
                     showErrorToast(e)
                     finish()
                     return@ensureBackgroundThread
@@ -1666,7 +1659,10 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
                 return
             }
 
-            if (isCropIntent) {
+            if (isCropIntent && !hasExtraOutput) {
+                // no EXTRA_OUTPUT: CROP convention is a small bitmap in "data", never overwrite the caller's source
+                returnCropBitmap(bitmap)
+            } else if (isCropIntent) {
                 if (saveUri.scheme == "file") {
                     saveBitmapToFile(bitmap, encodablePath(saveUri.path!!), true)
                 } else {
@@ -1699,6 +1695,19 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         } else {
             toast("${getString(R.string.image_editing_failed)}: ${result.error?.message}")
         }
+    }
+
+    private fun returnCropBitmap(bitmap: Bitmap) {
+        // keep the result well under the ~1 MB binder transaction limit
+        val maxSide = 300
+        val scale = minOf(1f, maxSide.toFloat() / maxOf(bitmap.width, bitmap.height))
+        val result = if (scale < 1f) {
+            Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt().coerceAtLeast(1), (bitmap.height * scale).toInt().coerceAtLeast(1), true)
+        } else {
+            bitmap
+        }
+        setResult(RESULT_OK, Intent().putExtra("data", result))
+        finish()
     }
 
     private fun getNewFilePath(): Pair<String, Boolean> {
@@ -1911,7 +1920,9 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         if (recordUndo && previous != null && previous !== bitmap && !previous.isRecycled) {
             // The previous bitmap is no longer the working copy, so keep it as-is
             // instead of duplicating ~64 MB per edit.
-            while (toolUndoStack.size >= 3) {
+            // at 4096 px one entry is ~64 MB: cap by bytes as well as count, always keep at least the newest
+            val budget = Runtime.getRuntime().maxMemory() / 4
+            while (toolUndoStack.size >= 3 || (toolUndoStack.isNotEmpty() && undoStackBytes() + previous.allocationByteCount > budget)) {
                 val oldest = toolUndoStack.removeAt(0)
                 if (!oldest.isRecycled && oldest !== bitmap && oldest !== filterInitialBitmap && oldest !== previous) {
                     oldest.recycle()
@@ -1926,6 +1937,8 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
             previous.recycle()
         }
     }
+
+    private fun undoStackBytes() = toolUndoStack.sumOf { if (it.isRecycled) 0L else it.allocationByteCount.toLong() }
 
     private fun undoLastTool() {
         if (toolUndoStack.isEmpty()) {
@@ -1949,14 +1962,22 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         binding.editorOverlayView.clearOverlays()
         resetEditorLayerSize(binding.editorDrawCanvas)
         resetEditorLayerSize(binding.editorOverlayView)
-        recycleAdjustPreview()
         adjustSourceBitmap = null
         binding.defaultImageView.colorFilter = null
+    }
+
+    private fun isCropUntouched(): Boolean {
+        val view = binding.cropImageView
+        return view.rotatedDegrees % 360 == 0 && !view.isFlippedHorizontally && !view.isFlippedVertically &&
+            view.cropRect == view.wholeImageRect
     }
 
     private fun commitCurrentTool(done: () -> Unit) {
         try {
             when {
+                binding.cropImageView.isVisible() && isCropUntouched() -> {
+                    // leaving an untouched crop tool is not an edit: no re-encode, keeps the lossless rotate path
+                }
                 binding.cropImageView.isVisible() -> {
                     ensureBackgroundThread {
                         try {
@@ -2002,7 +2023,6 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
                             }
                             runOnUiThread {
                                 if (keep != null) {
-                                    adjustPreviewBitmap = null
                                     replaceWorkingBitmap(keep)
                                     invalidateToolCaches()
                                 }

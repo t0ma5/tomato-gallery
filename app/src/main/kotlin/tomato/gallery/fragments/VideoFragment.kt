@@ -40,6 +40,7 @@ import tomato.gallery.extensions.hasNavBar
 import tomato.gallery.extensions.mediumExtra
 import tomato.gallery.extensions.mute
 import tomato.gallery.extensions.parseFileChannel
+import tomato.gallery.extensions.setClickActionLabel
 import tomato.gallery.extensions.unmute
 import tomato.gallery.helpers.*
 import tomato.gallery.interfaces.PlaybackSpeedListener
@@ -82,7 +83,10 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
                 mCurrTimeView.text = mCurrTime.getFormattedDuration()
             }
 
-            mTimerHandler.postDelayed(this, 1000)
+            // tick only while playing (or about to); playVideo restarts it. Up to 5 pages are alive at once.
+            if (mIsPlaying || mExoPlayer?.playWhenReady == true) {
+                mTimerHandler.postDelayed(this, 1000)
+            }
         }
     }
 
@@ -132,6 +136,9 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
             panoramaOutline.setOnClickListener { openPanorama() }
             bottomVideoTimeHolder.videoCurrTime.setOnClickListener { skip(false) }
             bottomVideoTimeHolder.videoDuration.setOnClickListener { skip(true) }
+            bottomVideoTimeHolder.videoCurrTime.setClickActionLabel(getString(R.string.video_skip_back))
+            bottomVideoTimeHolder.videoDuration.setClickActionLabel(getString(R.string.video_skip_forward))
+            bottomVideoTimeHolder.videoPlaybackSpeed.setClickActionLabel(getString(R.string.playback_speed))
             videoHolder.setOnClickListener { toggleFullscreen() }
             videoPreview.setOnClickListener { toggleFullscreen() }
             videoSurfaceFrame.controller.settings.swallowDoubleTaps = true
@@ -222,7 +229,7 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
             mIsFragmentVisible = true
         }
 
-        mIsFullscreen = activity.window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN == View.SYSTEM_UI_FLAG_FULLSCREEN
+        mIsFullscreen = listener?.isFullscreen() == true
         initTimeHolder()
         checkIfPanorama()
 
@@ -739,6 +746,7 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
 
         if (!wasEnded || !mConfig.loopVideos) {
             mPlayPauseButton.setImageResource(com.simplemobiletools.commons.R.drawable.ic_pause_outline_vector)
+            mPlayPauseButton.contentDescription = binding.root.context.getString(R.string.video_pause)
         }
 
         if (!mWasVideoStarted) {
@@ -755,6 +763,7 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
             mIsPlaying = true
         }
         mExoPlayer?.playWhenReady = true
+        setupTimer()
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
@@ -769,6 +778,7 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
         }
 
         mPlayPauseButton.setImageResource(com.simplemobiletools.commons.R.drawable.ic_play_outline_vector)
+        mPlayPauseButton.contentDescription = binding.root.context.getString(R.string.video_play)
         activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         mPositionAtPause = mExoPlayer?.currentPosition ?: 0L
     }
@@ -953,6 +963,13 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
         }
 
         binding.bottomVideoTimeHolder.videoToggleMute.setImageResource(drawableId)
+        binding.bottomVideoTimeHolder.videoToggleMute.contentDescription = binding.root.context.getString(
+            when {
+                !mHasAudio -> R.string.video_no_sound
+                isMuted -> R.string.video_unmute
+                else -> R.string.video_mute
+            }
+        )
     }
 
     private fun handleTouchHoldEvent(event: MotionEvent) {

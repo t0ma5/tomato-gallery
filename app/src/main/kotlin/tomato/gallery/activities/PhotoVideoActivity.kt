@@ -455,5 +455,7 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
 
     override fun isSlideShowActive() = false
 
+    override fun isFullscreen() = mIsFullScreen
+
     override fun interruptSlideshowDrag() {}
 }

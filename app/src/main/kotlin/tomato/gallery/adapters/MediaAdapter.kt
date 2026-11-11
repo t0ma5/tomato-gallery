@@ -668,12 +668,10 @@ class MediaAdapter(
             fileDirItem.mediaStoreId = selectedMedia.first().mediaStoreId
             "\"${firstPath.getFilenameFromPath()}\" ($size)"
         } else {
-            val fileDirItems = ArrayList<FileDirItem>(selectedMedia.size)
-            selectedMedia.forEach { medium ->
-                val curFileDirItem = medium.toFileDirItem()
-                fileDirItems.add(curFileDirItem)
-            }
-            val fileSize = fileDirItems.sumByLong { it.getProperSize(activity, countHidden = true) }.formatSize()
+            // cached sizes: a File/DocumentFile lookup per item janks select-all on big folders
+            val fileSize = selectedMedia.sumOf { medium ->
+                if (medium.size > 0L) medium.size else medium.toFileDirItem().getProperSize(activity, countHidden = true)
+            }.formatSize()
             val deleteItemsString = resources.getQuantityString(com.simplemobiletools.commons.R.plurals.delete_items, itemsCnt, itemsCnt)
             "$deleteItemsString ($fileSize)"
         }

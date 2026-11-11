@@ -328,7 +328,7 @@ fun SimpleActivity.launchSettings() {
 
 fun SimpleActivity.launchAbout() {
     val licenses = LICENSE_GLIDE or LICENSE_CROPPER or LICENSE_RTL or LICENSE_SUBSAMPLING or LICENSE_PATTERN or LICENSE_REPRINT or LICENSE_GIF_DRAWABLE or
-        LICENSE_PICASSO or LICENSE_EXOPLAYER or LICENSE_PANORAMA_VIEW or LICENSE_SANSELAN or LICENSE_FILTERS or LICENSE_GESTURE_VIEWS or LICENSE_APNG or
+        LICENSE_PICASSO or LICENSE_EXOPLAYER or LICENSE_PANORAMA_VIEW or LICENSE_FILTERS or LICENSE_GESTURE_VIEWS or LICENSE_APNG or
         LICENSE_JPEGOPTIM or LICENSE_PADDLEOCR
 
     val faqItems = arrayListOf(
@@ -740,6 +740,26 @@ private fun Context.getRecycleBinMedium(source: String, binKey: String, internal
     )
 }
 
+/**
+ * Call after deleting the originals of a bin move. [originals] and [binPaths] are index-aligned, as
+ * [movePathsInRecycleBinPartially] fills them. An original still on disk gets its bin copy rolled back,
+ * else it would show in the folder and the bin, and Undo would restore a "(1)" duplicate next to it.
+ * [callback] gets the bin copies that may be offered for Undo, on a background thread.
+ */
+fun BaseSimpleActivity.settleRecycleBinMove(originals: List<String>, binPaths: List<String>, callback: (undoable: ArrayList<String>) -> Unit) {
+    ensureBackgroundThread {
+        val undoable = ArrayList<String>()
+        originals.forEachIndexed { index, original ->
+            if (getDoesFilePathExist(original)) {
+                undoRecycleBinCopy(original)
+            } else {
+                binPaths.getOrNull(index)?.let { undoable.add(it) }
+            }
+        }
+        callback(undoable)
+    }
+}
+
 // Reverts one successful bin copy when the batch it belongs to is rolled back; the original was not deleted.
 private fun BaseSimpleActivity.undoRecycleBinCopy(source: String) {
     try {
@@ -790,7 +810,7 @@ fun BaseSimpleActivity.restoreRecycleBinPaths(paths: ArrayList<String>, callback
     ensureBackgroundThread {
         val newPaths = ArrayList<String>()
         var shownRestoringToPictures = false
-        for (source in paths) {
+        for ((index, source) in paths.withIndex()) {
             var destination = source.removePrefix(recycleBinPath)
 
             val destinationParent = destination.getParentPath()
@@ -806,13 +826,19 @@ fun BaseSimpleActivity.restoreRecycleBinPaths(paths: ArrayList<String>, callback
 
             val lastModified = File(source).lastModified()
 
-            val isShowingSAF = handleSAFDialog(destination) {}
-            if (isShowingSAF) {
-                return@ensureBackgroundThread
+            // the dialog is async: rescan what is done, then resume with the rest once access is granted
+            // (both handlers also call back at once with true when no dialog is needed, ignore that)
+            val remaining = ArrayList(paths.subList(index, paths.size))
+            var waitingForAccess = false
+            val resume: (Boolean) -> Unit = { granted ->
+                if (waitingForAccess && granted) {
+                    restoreRecycleBinPaths(remaining, callback)
+                }
             }
 
-            val isShowingSAFSdk30 = handleSAFDialogSdk30(destination) {}
-            if (isShowingSAFSdk30) {
+            if (handleSAFDialog(destination, resume) || handleSAFDialogSdk30(destination, resume)) {
+                waitingForAccess = true
+                finishRecycleBinRestore(newPaths, null)
                 return@ensureBackgroundThread
             }
 
@@ -879,12 +905,16 @@ fun BaseSimpleActivity.restoreRecycleBinPaths(paths: ArrayList<String>, callback
             File(source).delete()
         }
 
-        runOnUiThread {
-            callback()
-        }
+        finishRecycleBinRestore(newPaths, callback)
+    }
+}
 
-        rescanPaths(newPaths) {
-            fixDateTaken(newPaths, false)
+// on R+ without All-files access folder contents come from MediaStore, so refresh only once the scan is in
+private fun BaseSimpleActivity.finishRecycleBinRestore(newPaths: ArrayList<String>, callback: (() -> Unit)?) {
+    rescanPaths(newPaths) {
+        fixDateTaken(newPaths, false)
+        if (callback != null) {
+            runOnUiThread(callback)
         }
     }
 }
@@ -904,6 +934,8 @@ fun BaseSimpleActivity.emptyTheRecycleBin(callback: (() -> Unit)? = null) {
         try {
             recycleBin.deleteRecursively()
             mediaDB.clearRecycleBin()
+            // bin keys get reused, stale tags would re-attach to the next file deleted from the same path
+            tagsDB.deleteTagsWithPrefix("$RECYCLE_BIN/")
             directoryDB.deleteRecycleBin()
             toast(com.simplemobiletools.commons.R.string.recycle_bin_emptied)
             callback?.invoke()
