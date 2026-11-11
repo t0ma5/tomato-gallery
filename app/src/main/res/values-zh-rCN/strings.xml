@@ -490,4 +490,5 @@
     <string name="video_unmute">取消静音</string>
     <string name="video_skip_back">后退</string>
     <string name="video_skip_forward">快进</string>
+    <string name="change_selected_photos">更改所选照片</string>
 </resources>

@@ -60,6 +60,7 @@ import tomato.gallery.helpers.MetadataStripper
 import tomato.gallery.helpers.RECYCLE_BIN
 import tomato.gallery.helpers.REQUEST_FAVORITE_SYSTEM
 import tomato.gallery.helpers.REQUEST_SYSTEM_TRASH
+import tomato.gallery.helpers.getPermissionToRequest
 import tomato.gallery.models.DateTaken
 import tomato.gallery.models.Medium
 import com.squareup.picasso.Picasso
@@ -191,7 +192,7 @@ fun Activity.shareMediaPaths(paths: ArrayList<String>) {
                 val dest = File(File(shareDir, index.toString()), activity.getShareFilename(path))
                 val ok = try {
                     dest.parentFile?.mkdirs()
-                    activity.copyToShareCache(path, dest) && MetadataStripper.stripAll(activity, dest.absolutePath)
+                    activity.copyToShareCache(path, dest) && MetadataStripper.stripForShare(activity, dest.absolutePath)
                 } catch (_: Exception) {
                     false
                 }
@@ -926,6 +927,27 @@ private fun BaseSimpleActivity.tryDeleteDestinationQuietly(path: String) {
             getSomeDocumentFile(path)?.delete()
         }
     } catch (_: Exception) {
+    }
+}
+
+/**
+ * Media permission that accepts Android 14+ partial access. [reselect] reopens the system photo picker,
+ * so a user on "Select photos" can change the selection. Commons' handlePartialMediaPermissions reports
+ * only the first grant result (READ_MEDIA_IMAGES, denied on partial access), so re-check here.
+ */
+fun BaseSimpleActivity.handleMediaAccess(reselect: Boolean = false, callback: (granted: Boolean) -> Unit) {
+    if (!reselect && hasMediaAccess()) {
+        callback(true)
+        return
+    }
+
+    if (isUpsideDownCakePlus()) {
+        val permissions = listOf(PERMISSION_READ_MEDIA_IMAGES, PERMISSION_READ_MEDIA_VIDEO, PERMISSION_READ_MEDIA_VISUAL_USER_SELECTED)
+        handlePartialMediaPermissions(permissions, force = true) {
+            callback(hasMediaAccess())
+        }
+    } else {
+        handlePermission(getPermissionToRequest(), callback)
     }
 }
 

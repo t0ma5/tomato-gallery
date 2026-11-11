@@ -492,4 +492,5 @@
     <string name="video_unmute">Включить звук</string>
     <string name="video_skip_back">Перемотать назад</string>
     <string name="video_skip_forward">Перемотать вперёд</string>
+    <string name="change_selected_photos">Изменить выбранные фото</string>
 </resources>

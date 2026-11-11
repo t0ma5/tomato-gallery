@@ -51,6 +51,7 @@ import tomato.gallery.dialogs.ResizeDialog
 import tomato.gallery.dialogs.SaveAsDialog
 import tomato.gallery.extensions.config
 import tomato.gallery.extensions.fixDateTaken
+import tomato.gallery.extensions.handleMediaAccess
 import tomato.gallery.extensions.openEditor
 import tomato.gallery.extensions.setupEdgeToEdge
 import tomato.gallery.extensions.exifUriForPath
@@ -150,11 +151,11 @@ class EditActivity : SimpleActivity(), CropImageView.OnCropImageCompleteListener
         )
 
         setupOptionsMenu()
-        handlePermission(getPermissionToRequest()) {
+        handleMediaAccess {
             if (!it) {
                 toast(com.simplemobiletools.commons.R.string.no_storage_permissions)
                 finish()
-                return@handlePermission
+                return@handleMediaAccess
             }
             ensureAppUnlocked {
                 try {

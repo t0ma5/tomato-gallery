@@ -515,4 +515,5 @@
     <string name="video_unmute">Unmute</string>
     <string name="video_skip_back">Skip back</string>
     <string name="video_skip_forward">Skip forward</string>
+    <string name="change_selected_photos">Change selected photos</string>
 </resources>

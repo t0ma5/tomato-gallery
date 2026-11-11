@@ -101,6 +101,7 @@ class SettingsActivity : SimpleActivity() {
         setupChangeDateTimeFormat()
         setupFileLoadingPriority()
         setupManageIncludedFolders()
+        setupChangeSelectedPhotos()
         setupManageExcludedFolders()
         setupManageHiddenFolders()
         setupSearchAllFiles()
@@ -245,6 +246,16 @@ class SettingsActivity : SimpleActivity() {
                 GrantAllFilesDialog(this)
             } else {
                 startActivity(Intent(this, IncludedFoldersActivity::class.java))
+            }
+        }
+    }
+
+    // only on Android 14+ "Select photos", the system picker is the one place to change that selection
+    private fun setupChangeSelectedPhotos() {
+        binding.settingsChangeSelectedPhotosHolder.beVisibleIf(hasOnlyPartialMediaAccess())
+        binding.settingsChangeSelectedPhotosHolder.setOnClickListener {
+            handleMediaAccess(reselect = true) {
+                binding.settingsChangeSelectedPhotosHolder.beVisibleIf(hasOnlyPartialMediaAccess())
             }
         }
     }

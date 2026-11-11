@@ -679,6 +679,7 @@ for locale, extra in NEW_STRINGS.items():
 # strings_audit_*.xml and the video control labels (TalkBack)
 AUDIT_STRINGS = {
     "de": {
+        "change_selected_photos": "Ausgewählte Fotos ändern",
         "duplicate_keep_label": "Behalten: %s",
         "duplicate_delete_label": "Löschen: %s",
         "duplicate_choose_keep": "Zu behaltende Kopie wählen",
@@ -693,6 +694,7 @@ AUDIT_STRINGS = {
         "video_skip_forward": "Vorspringen",
     },
     "fr": {
+        "change_selected_photos": "Modifier les photos sélectionnées",
         "duplicate_keep_label": "Garder : %s",
         "duplicate_delete_label": "Supprimer : %s",
         "duplicate_choose_keep": "Choisir la copie à garder",
@@ -707,6 +709,7 @@ AUDIT_STRINGS = {
         "video_skip_forward": "Avancer",
     },
     "es": {
+        "change_selected_photos": "Cambiar fotos seleccionadas",
         "duplicate_keep_label": "Conservar: %s",
         "duplicate_delete_label": "Eliminar: %s",
         "duplicate_choose_keep": "Elige la copia que quieres conservar",
@@ -721,6 +724,7 @@ AUDIT_STRINGS = {
         "video_skip_forward": "Avanzar",
     },
     "ru": {
+        "change_selected_photos": "Изменить выбранные фото",
         "duplicate_keep_label": "Оставить: %s",
         "duplicate_delete_label": "Удалить: %s",
         "duplicate_choose_keep": "Выберите копию, которую оставить",
@@ -735,6 +739,7 @@ AUDIT_STRINGS = {
         "video_skip_forward": "Перемотать вперёд",
     },
     "it": {
+        "change_selected_photos": "Modifica foto selezionate",
         "duplicate_keep_label": "Mantieni: %s",
         "duplicate_delete_label": "Elimina: %s",
         "duplicate_choose_keep": "Scegli la copia da mantenere",
@@ -749,6 +754,7 @@ AUDIT_STRINGS = {
         "video_skip_forward": "Avanti",
     },
     "pl": {
+        "change_selected_photos": "Zmień wybrane zdjęcia",
         "duplicate_keep_label": "Zachowaj: %s",
         "duplicate_delete_label": "Usuń: %s",
         "duplicate_choose_keep": "Wybierz kopię do zachowania",
@@ -763,6 +769,7 @@ AUDIT_STRINGS = {
         "video_skip_forward": "Przewiń do przodu",
     },
     "zh-rCN": {
+        "change_selected_photos": "更改所选照片",
         "duplicate_keep_label": "保留：%s",
         "duplicate_delete_label": "删除：%s",
         "duplicate_choose_keep": "选择要保留的副本",
@@ -777,6 +784,7 @@ AUDIT_STRINGS = {
         "video_skip_forward": "快进",
     },
     "ja": {
+        "change_selected_photos": "選択した写真を変更",
         "duplicate_keep_label": "残す：%s",
         "duplicate_delete_label": "削除：%s",
         "duplicate_choose_keep": "残すコピーを選択",

@@ -490,4 +490,5 @@
     <string name="video_unmute">Ton einschalten</string>
     <string name="video_skip_back">Zurückspringen</string>
     <string name="video_skip_forward">Vorspringen</string>
+    <string name="change_selected_photos">Ausgewählte Fotos ändern</string>
 </resources>

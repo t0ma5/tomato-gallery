@@ -36,6 +36,45 @@ object MetadataStripper {
         }
     }
 
+    /**
+     * For a private share copy in the cache. JPEGs get their metadata segments dropped for real,
+     * ExifInterface alone keeps the EXIF thumbnail (a small copy of the original frame), IPTC and
+     * trailers. Only the orientation goes back in, so the shared photo isn't shown sideways.
+     */
+    fun stripForShare(context: Context, path: String): Boolean {
+        val file = File(path)
+        val isJpeg = try {
+            val head = ByteArray(2)
+            file.inputStream().use { it.read(head) == 2 && JpegMetadataStripper.isJpeg(head) }
+        } catch (_: Exception) {
+            false
+        }
+        if (!isJpeg) {
+            return stripAll(context, path)
+        }
+
+        return try {
+            val orientation = try {
+                ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)
+            } catch (_: Exception) {
+                ExifInterface.ORIENTATION_UNDEFINED
+            }
+            val stripped = JpegMetadataStripper.strip(file.readBytes()) ?: return false
+            file.writeBytes(stripped)
+            if (orientation != ExifInterface.ORIENTATION_UNDEFINED && orientation != ExifInterface.ORIENTATION_NORMAL) {
+                ExifInterface(path).apply {
+                    setAttribute(ExifInterface.TAG_ORIENTATION, orientation.toString())
+                    saveAttributes()
+                }
+            }
+            true
+        } catch (_: Exception) {
+            false
+        } catch (_: OutOfMemoryError) {
+            false
+        }
+    }
+
     private fun mutate(context: Context, path: String, update: (ExifInterface) -> Unit): Boolean {
         val lastModified = if (!path.startsWith("content://")) File(path).lastModified() else 0L
         val ok = try {

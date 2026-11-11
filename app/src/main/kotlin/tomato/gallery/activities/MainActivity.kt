@@ -185,11 +185,12 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     }
 
     private fun handleMediaPermissions(callback: (granted: Boolean) -> Unit) {
-        handlePermission(getPermissionToRequest()) { granted ->
+        handleMediaAccess { granted ->
             callback(granted)
             if (granted && isRPlus()) {
                 handlePermission(PERMISSION_MEDIA_LOCATION) {}
-                if (isTiramisuPlus()) {
+                // on 14+ videos are asked together with images, a second prompt would come back every launch on partial access
+                if (isTiramisuPlus() && !isUpsideDownCakePlus()) {
                     handlePermission(PERMISSION_READ_MEDIA_VIDEO) {}
                 }
 
@@ -469,7 +470,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
     private fun checkOTGPath() {
         ensureBackgroundThread {
-            if (!config.wasOTGHandled && hasPermission(getPermissionToRequest()) && hasOTGConnected() && config.OTGPath.isEmpty()) {
+            if (!config.wasOTGHandled && hasMediaAccess() && hasOTGConnected() && config.OTGPath.isEmpty()) {
                 getStorageDirectories().firstOrNull { it.trimEnd('/') != internalStoragePath && it.trimEnd('/') != sdCardPath }?.apply {
                     config.wasOTGHandled = true
                     val otgPath = trimEnd('/')
@@ -498,7 +499,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
     private fun tryLoadGallery() {
         // avoid calling anything right after granting the permission, it will be called from onResume()
-        val wasMissingPermission = config.appRunCount == 1 && !hasPermission(getPermissionToRequest())
+        val wasMissingPermission = config.appRunCount == 1 && !hasMediaAccess()
         handleMediaPermissions { success ->
             if (success) {
                 if (wasMissingPermission) {

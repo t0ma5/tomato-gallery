@@ -1167,6 +1167,13 @@ fun Context.parseFileChannel(path: String, fc: FileChannel, level: Int, start: L
     }
 }
 
+// Android 14+: "Select photos" grants READ_MEDIA_VISUAL_USER_SELECTED instead of READ_MEDIA_IMAGES (full access grants both)
+fun Context.hasMediaAccess() =
+    hasPermission(getPermissionToRequest()) || (isUpsideDownCakePlus() && hasPermission(PERMISSION_READ_MEDIA_VISUAL_USER_SELECTED))
+
+fun Context.hasOnlyPartialMediaAccess() =
+    isUpsideDownCakePlus() && !hasPermission(getPermissionToRequest()) && hasPermission(PERMISSION_READ_MEDIA_VISUAL_USER_SELECTED)
+
 fun Context.addPathToDB(path: String) {
     ensureBackgroundThread {
         if (!getDoesFilePathExist(path)) {

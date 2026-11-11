@@ -491,4 +491,5 @@
     <string name="video_unmute">Activer le son</string>
     <string name="video_skip_back">Reculer</string>
     <string name="video_skip_forward">Avancer</string>
+    <string name="change_selected_photos">Modifier les photos sélectionnées</string>
 </resources>

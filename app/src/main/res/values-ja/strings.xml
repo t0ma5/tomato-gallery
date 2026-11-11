@@ -488,4 +488,5 @@
     <string name="video_unmute">ミュート解除</string>
     <string name="video_skip_back">戻る</string>
     <string name="video_skip_forward">進む</string>
+    <string name="change_selected_photos">選択した写真を変更</string>
 </resources>

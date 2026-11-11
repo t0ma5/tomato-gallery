@@ -492,4 +492,5 @@
     <string name="video_unmute">Włącz dźwięk</string>
     <string name="video_skip_back">Przewiń do tyłu</string>
     <string name="video_skip_forward">Przewiń do przodu</string>
+    <string name="change_selected_photos">Zmień wybrane zdjęcia</string>
 </resources>

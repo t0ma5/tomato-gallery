@@ -63,7 +63,7 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
         setupEdgeToEdge(padBottomSystem = listOf(binding.bottomActions.bottomActionsWrapper))
         setupOptionsMenu()
         refreshMenuItems()
-        handlePermission(getPermissionToRequest()) {
+        handleMediaAccess {
             if (it) {
                 ensureAppUnlocked {
                     checkIntent(savedInstanceState)

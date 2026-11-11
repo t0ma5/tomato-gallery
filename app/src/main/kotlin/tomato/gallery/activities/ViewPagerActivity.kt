@@ -149,7 +149,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         checkNotchSupport()
         (MediaActivity.mMedia.clone() as ArrayList<ThumbnailItem>).filterIsInstanceTo(mMediaFiles, Medium::class.java)
 
-        handlePermission(getPermissionToRequest()) {
+        handleMediaAccess {
             if (it) {
                 ensureAppUnlocked {
                     initViewPager()
@@ -168,7 +168,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
     override fun onResume() {
         super.onResume()
-        if (!hasPermission(getPermissionToRequest())) {
+        if (!hasMediaAccess()) {
             finish()
             return
         }
